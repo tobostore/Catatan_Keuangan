@@ -1,18 +1,15 @@
 import { NextResponse } from "next/server"
-import type { ResultSetHeader } from "mysql2"
-
 import { query } from "@/lib/db"
 import { getUserFromCookies } from "@/lib/server-session"
+import { sendTransactionNotification } from "@/lib/whatsapp"
 import {
-  getOrCreateCategoryId,
-  resolveAccountId,
   VALID_TYPES,
   type TransactionType,
   TRANSACTION_SELECT,
   mapTransactionRow,
-  fetchTransactionRowById,
   InvalidAccountError,
   type TransactionRow,
+  createTransaction,
 } from "./helpers"
 
 const defaultAccountEnv = process.env.DEFAULT_ACCOUNT_ID
@@ -96,10 +93,15 @@ export async function POST(request: Request) {
       parsedAccountId = numericAccountId
     }
 
-    let resolvedAccountId: number
+    let transactionResponse
     try {
-      resolvedAccountId = await resolveAccountId({
+      transactionResponse = await createTransaction({
         userId,
+        type,
+        category: category.trim(),
+        amount: Number(amount),
+        description: description ?? "",
+        date,
         preferredAccountId: preferredAccountId ?? undefined,
         submittedAccountId: parsedAccountId,
       })
@@ -109,20 +111,21 @@ export async function POST(request: Request) {
       }
       throw error
     }
-    const categoryId = await getOrCreateCategoryId(userId, category.trim(), type)
 
-    const result = await query<ResultSetHeader>(
-      `INSERT INTO transactions (user_id, account_id, category_id, type, amount, description, transaction_date)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [userId, resolvedAccountId, categoryId, type, Number(amount), description ?? "", date],
-    )
-
-    const createdRow = await fetchTransactionRowById(result.insertId, userId)
-    if (!createdRow) {
+    if (!transactionResponse) {
       return NextResponse.json({ message: "Transaksi berhasil disimpan tetapi tidak dapat dibaca kembali" }, { status: 201 })
     }
 
-    return NextResponse.json(mapTransactionRow(createdRow), { status: 201 })
+    void sendTransactionNotification({
+      type: transactionResponse.type,
+      category: transactionResponse.category,
+      amount: transactionResponse.amount,
+      description: transactionResponse.description,
+      date: transactionResponse.date,
+      accountName: transactionResponse.accountName,
+    })
+
+    return NextResponse.json(transactionResponse, { status: 201 })
   } catch (error) {
     console.error("POST /api/transactions error", error)
     return NextResponse.json({ message: "Gagal menyimpan transaksi" }, { status: 500 })

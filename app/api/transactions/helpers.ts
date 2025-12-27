@@ -129,3 +129,51 @@ export async function getOrCreateCategoryId(userId: number, name: string, type: 
 
   return inserted.insertId
 }
+
+export async function createTransaction({
+  userId,
+  type,
+  category,
+  amount,
+  description,
+  date,
+  preferredAccountId,
+  submittedAccountId,
+}: {
+  userId: number
+  type: TransactionType
+  category: string
+  amount: number
+  description?: string
+  date: string
+  preferredAccountId?: number | null
+  submittedAccountId?: number
+}) {
+  const resolvedAccountId = await resolveAccountId({
+    userId,
+    preferredAccountId: preferredAccountId ?? undefined,
+    submittedAccountId,
+  })
+
+  const categoryId = await getOrCreateCategoryId(userId, category.trim(), type)
+  const result = await query<ResultSetHeader>(
+    `INSERT INTO transactions (user_id, account_id, category_id, type, amount, description, transaction_date)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      userId,
+      resolvedAccountId,
+      categoryId,
+      type,
+      Number(amount),
+      description ?? "",
+      date,
+    ],
+  )
+
+  const createdRow = await fetchTransactionRowById(result.insertId, userId)
+  if (!createdRow) {
+    return null
+  }
+
+  return mapTransactionRow(createdRow)
+}

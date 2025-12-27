@@ -21,7 +21,6 @@ export default function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
     <aside className="w-64 bg-card border-r border-border p-6 flex flex-col">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-primary">Finance Manager</h1>
-        <p className="text-sm text-muted-foreground mt-1">Kelola keuangan Anda</p>
       </div>
 
       <nav className="flex-1 space-y-2">

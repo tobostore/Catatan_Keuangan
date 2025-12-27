@@ -4,7 +4,14 @@ import { NextResponse } from "next/server"
 import { SESSION_COOKIE_NAME, verifySessionToken } from "@/lib/auth"
 
 const PUBLIC_ROUTES = ["/login"]
-const PUBLIC_API_PREFIXES = ["/api/login", "/api/logout", "/api/me"]
+const PUBLIC_API_PREFIXES = [
+  "/api/login",
+  "/api/logout",
+  "/api/me",
+  "/api/transactions/external",
+  "/api/whatsapp/poller",
+  "/api/whatsapp/webhook",
+]
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
