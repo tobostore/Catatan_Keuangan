@@ -1,3 +1,6 @@
+import { listSenderLinksForUser } from "@/lib/whatsapp-sender-links"
+import { normalizeWhatsAppJid } from "@/lib/whatsapp-utils"
+
 const WHATSAPP_SEND_PATH = process.env.WHATSAPP_SEND_PATH ?? "/send/message"
 
 export type WhatsAppConfig = {
@@ -79,12 +82,15 @@ export async function sendWhatsAppText({ message, recipients }: SendTextOptions)
 	}
 
 	const targets = recipients?.length ? recipients : config.defaultTargets
-	if (targets.length === 0) {
+	const sanitizedTargets = targets
+		.map((target) => normalizeWhatsAppJid(target))
+		.filter((target): target is string => Boolean(target))
+	if (sanitizedTargets.length === 0) {
 		console.warn("WhatsApp notification skipped; no recipients configured")
 		return
 	}
 
-	const sendPromises = targets.map(async (target) => {
+	const sendPromises = sanitizedTargets.map(async (target) => {
 		const payload: SendPayload = {
 			phone: target,
 			message,
@@ -142,18 +148,42 @@ export function formatTransactionMessage({
 	].join("\n")
 }
 
-export async function sendTransactionNotification(transaction: {
+type TransactionNotificationInput = {
+	userId?: number
+	recipients?: string[]
 	type: "income" | "expense"
 	category: string
 	amount: number
 	description: string
 	date: string
 	accountName: string
-}) {
+}
+
+export async function sendTransactionNotification({ userId, recipients, ...transaction }: TransactionNotificationInput) {
 	const message = formatTransactionMessage(transaction)
 	try {
-		await sendWhatsAppText({ message })
+		const derivedRecipients = await resolveNotificationRecipients(userId, recipients)
+		await sendWhatsAppText({
+			message,
+			recipients: derivedRecipients.length ? derivedRecipients : undefined,
+		})
 	} catch (error) {
 		console.error("Failed to send WhatsApp notification", error)
+	}
+}
+
+async function resolveNotificationRecipients(userId?: number, explicit?: string[]) {
+	if (explicit?.length) {
+		return explicit
+	}
+	if (!userId) {
+		return []
+	}
+	try {
+		const linkedSenders = await listSenderLinksForUser(userId)
+		return linkedSenders
+	} catch (error) {
+		console.error("Failed to resolve WhatsApp recipients for user", userId, error)
+		return []
 	}
 }

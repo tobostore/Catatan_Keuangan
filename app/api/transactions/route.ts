@@ -117,6 +117,7 @@ export async function POST(request: Request) {
     }
 
     void sendTransactionNotification({
+      userId,
       type: transactionResponse.type,
       category: transactionResponse.category,
       amount: transactionResponse.amount,

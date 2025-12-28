@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server"
-import type { RowDataPacket } from "mysql2"
 
 import { createTransaction, type TransactionResponse, InvalidAccountError } from "@/app/api/transactions/helpers"
-import { resolveUserReference } from "@/lib/external-transaction-utils"
-import { query } from "@/lib/db"
+import { resolveAccountReference, resolveUserReference } from "@/lib/external-transaction-utils"
 import { buildAccountBalanceMessage } from "@/lib/account-balances"
 import { sendTransactionNotification, sendWhatsAppText, formatTransactionMessage } from "@/lib/whatsapp"
+import { normalizeWhatsAppJid } from "@/lib/whatsapp-utils"
 import { isBalanceCommand, parseTransactionCommand } from "@/lib/whatsapp-commands"
+import { ensureSenderLinkTable, findSenderLink, upsertSenderLink } from "@/lib/whatsapp-sender-links"
 
 const SECRET = process.env.WHATSAPP_WEBHOOK_SECRET?.trim()
 const DEFAULT_USER_ID = readNumberEnv("WHATSAPP_WEBHOOK_DEFAULT_USER_ID")
@@ -96,6 +96,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: parsed.error }, { status: 400 })
   }
 
+  const accountResolution = await resolveAccountReference(userId, {
+    accountId: parsed.data.accountId,
+    accountName: parsed.data.accountName,
+    source: parsed.data.accountName,
+    sumber: parsed.data.accountName,
+  })
+  if (!accountResolution.ok) {
+    return NextResponse.json({ message: accountResolution.message }, { status: 400 })
+  }
+
   let transaction: TransactionResponse | null
   try {
     transaction = await createTransaction({
@@ -106,7 +116,7 @@ export async function POST(request: Request) {
       description: parsed.data.description,
       date: parsed.data.date,
       preferredAccountId: senderConfig?.accountId,
-      submittedAccountId: parsed.data.accountId,
+      submittedAccountId: accountResolution.accountId,
     })
   } catch (error) {
     if (error instanceof InvalidAccountError) {
@@ -121,6 +131,7 @@ export async function POST(request: Request) {
   }
 
   void sendTransactionNotification({
+    userId,
     type: transaction.type,
     category: transaction.category,
     amount: transaction.amount,
@@ -149,7 +160,7 @@ function extractMessageAndSender(payload: unknown) {
     selectNestedString(source, "payload", ["message", "text", "body"]) ??
     findStringDeep(source, MESSAGE_KEY_SET)
 
-  const sender = normalizeSender(
+  const sender = normalizeWhatsAppJid(
     selectString(source, ["from", "sender", "phone", "jid", "number", "remoteJid"]) ??
       selectNestedString(source, "contact", ["jid", "number", "wid"]) ??
       selectNestedString(source, "data", ["from", "sender", "phone"]) ??
@@ -219,49 +230,6 @@ function findStringDeep(value: unknown, keys: Set<string>): string | undefined {
   return undefined
 }
 
-function normalizeSender(value?: string | null) {
-  if (!value) {
-    return undefined
-  }
-
-  const sanitized = value.replace(/[\u0000-\u0020\u007f-\u009f\u00a0\u00ad\ufeff\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, "")
-  let trimmed = sanitized.trim()
-  const jidMatch = sanitized.match(/[0-9a-zA-Z_.-]+@[0-9a-zA-Z_.-]+/)
-  if (jidMatch) {
-    trimmed = jidMatch[0]
-  }
-  if (!trimmed) {
-    return undefined
-  }
-
-  if (trimmed.includes("@")) {
-    const lower = trimmed.toLowerCase()
-    const [localPartRaw = "", domainPartRaw = ""] = lower.split("@")
-    const [localPart = "", resourcePart = ""] = localPartRaw.split(":")
-    const domainPart = domainPartRaw.split(":")[0] ?? domainPartRaw
-    const cleanLocal = localPart.split(":")[0] ?? localPart
-    if (!domainPart) {
-      return cleanLocal
-    }
-    const cleanDomain = domainPart.split("/")[0]?.split(":")[0] ?? domainPart
-    if (!cleanDomain) {
-      return cleanLocal
-    }
-    const base = `${cleanLocal}@${cleanDomain}`
-    if (resourcePart) {
-      return `${base}:${resourcePart}`
-    }
-    return base
-  }
-
-  const digits = trimmed.replace(/[^0-9]/g, "")
-  if (!digits) {
-    return trimmed.toLowerCase()
-  }
-
-  return `${digits}@s.whatsapp.net`
-}
-
 function toCodepoints(value: string) {
   return Array.from(value)
     .map((char) => `U+${char.codePointAt(0)?.toString(16).toUpperCase().padStart(4, "0")}`)
@@ -285,7 +253,7 @@ function buildAllowedSenderSet() {
 
   const entries = raw
     .split(",")
-    .map((entry) => normalizeSender(entry))
+    .map((entry) => normalizeWhatsAppJid(entry))
     .filter((entry): entry is string => Boolean(entry))
 
   return new Set(entries)
@@ -309,7 +277,7 @@ function buildSenderMap() {
       continue
     }
 
-    const normalizedId = normalizeSender(identifier)
+    const normalizedId = normalizeWhatsAppJid(identifier)
     if (!normalizedId) {
       continue
     }
@@ -421,73 +389,6 @@ async function handleBalanceCommand(sender: string, userId: number) {
   } catch (error) {
     console.error("Failed to build balance message", error)
     return NextResponse.json({ message: "Gagal mengambil saldo akun" }, { status: 500 })
-  }
-}
-
-type SenderLinkRow = RowDataPacket & {
-  sender_jid: string
-  user_id: number
-  account_id: number | null
-}
-
-type SenderLinkPayload = {
-  sender: string
-  userId: number
-  accountId?: number
-}
-
-let senderLinkTablePromise: Promise<void> | null = null
-
-async function ensureSenderLinkTable() {
-  if (!senderLinkTablePromise) {
-    senderLinkTablePromise = query(`
-      CREATE TABLE IF NOT EXISTS whatsapp_sender_links (
-        sender_jid VARCHAR(191) PRIMARY KEY,
-        user_id BIGINT UNSIGNED NOT NULL,
-        account_id BIGINT UNSIGNED NULL,
-        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        KEY idx_user_id (user_id)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-    `)
-      .then(() => undefined)
-      .catch((error) => {
-        senderLinkTablePromise = null
-        throw error
-      })
-  }
-
-  await senderLinkTablePromise
-}
-
-async function upsertSenderLink({ sender, userId, accountId }: SenderLinkPayload) {
-  await query(
-    `
-      INSERT INTO whatsapp_sender_links (sender_jid, user_id, account_id)
-      VALUES (?, ?, ?)
-      ON DUPLICATE KEY UPDATE
-        user_id = VALUES(user_id),
-        account_id = VALUES(account_id),
-        updated_at = CURRENT_TIMESTAMP
-    `,
-    [sender, userId, accountId ?? null],
-  )
-}
-
-async function findSenderLink(sender: string) {
-  await ensureSenderLinkTable()
-  const rows = await query<SenderLinkRow[]>(
-    "SELECT sender_jid, user_id, account_id FROM whatsapp_sender_links WHERE sender_jid = ? LIMIT 1",
-    [sender],
-  )
-
-  if (rows.length === 0) {
-    return undefined
-  }
-
-  return {
-    userId: Number(rows[0].user_id),
-    accountId: rows[0].account_id !== null ? Number(rows[0].account_id) : undefined,
   }
 }
 

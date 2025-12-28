@@ -86,6 +86,7 @@ export async function POST(request: Request) {
     }
 
     void sendTransactionNotification({
+      userId,
       type: transaction.type,
       category: transaction.category,
       amount: transaction.amount,

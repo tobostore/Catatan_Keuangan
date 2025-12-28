@@ -232,6 +232,7 @@ async function processChat(target: PollTarget, config: WhatsAppConfig): Promise<
         } else {
           summary.created++
           void sendTransactionNotification({
+            userId: target.userId,
             type: transaction.type,
             category: transaction.category,
             amount: transaction.amount,
