@@ -8,7 +8,7 @@ import Dashboard from "@/components/pages/dashboard"
 import Transactions from "@/components/pages/transactions"
 import Reports from "@/components/pages/reports"
 import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
 export default function MainApp() {
   const [currentPage, setCurrentPage] = useState<"dashboard" | "transactions" | "reports">("dashboard")
@@ -49,6 +49,9 @@ export default function MainApp() {
       </div>
 
       <SheetContent side="left" className="p-0 w-72 md:hidden">
+        <SheetHeader className="sr-only">
+          <SheetTitle>Sidebar</SheetTitle>
+        </SheetHeader>
         <Sidebar currentPage={currentPage} setCurrentPage={handleNavigate} />
       </SheetContent>
     </Sheet>

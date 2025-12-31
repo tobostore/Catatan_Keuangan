@@ -106,10 +106,12 @@ export default function Transactions() {
         accountId: Number(formData.accountId),
       }
 
+      const account = accounts.find(acc => String(acc.id) === String(payload.accountId));
+      const accountName = account ? account.name : "";
       if (editingId) {
-        await updateTransaction(editingId, payload)
+        await updateTransaction({ ...payload, id: editingId, accountName, accountId: String(payload.accountId) });
       } else {
-        await addTransaction(payload)
+        await addTransaction({ ...payload, id: "", accountName, accountId: String(payload.accountId) });
       }
 
       resetForm()

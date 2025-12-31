@@ -2,6 +2,10 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Wallet } from "lucide-react"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -40,49 +44,44 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted">
-      <div className="w-full max-w-md bg-background border border-border rounded-2xl shadow-xl p-8">
-        <div className="text-center mb-8 space-y-2">
-          <h1 className="text-2xl font-bold text-foreground">Masuk ke Finance Manager</h1>
-          <p className="text-sm text-muted-foreground">Silakan gunakan akun yang sudah terdaftar</p>
-        </div>
-
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Email</label>
-            <input
-              type="email"
-              className="w-full px-4 py-2 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="nama@contoh.com"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Password</label>
-            <input
-              type="password"
-              className="w-full px-4 py-2 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="••••••••"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              required
-            />
-          </div>
-
-          {error && <p className="text-sm text-destructive">{error}</p>}
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full py-2 rounded-lg bg-primary text-primary-foreground font-semibold hover:opacity-90 transition disabled:opacity-50"
-          >
-            {isLoading ? "Sedang masuk..." : "Masuk"}
-          </button>
-        </form>
-      </div>
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <Card className="w-full max-w-md shadow-xl border border-border bg-background dark:bg-background">
+        <CardHeader className="flex flex-col items-center gap-2 pb-2">
+          <Wallet className="w-10 h-10 text-primary mb-2" />
+          <CardTitle className="text-2xl font-bold text-foreground">Finance Manager</CardTitle>
+          <CardDescription className="text-muted-foreground">Masuk ke akun Anda untuk mengelola keuangan</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Email</label>
+              <Input
+                type="email"
+                placeholder="nama@contoh.com"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+                className="bg-background text-foreground border-input placeholder:text-muted-foreground"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Password</label>
+              <Input
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+                className="bg-background text-foreground border-input placeholder:text-muted-foreground"
+              />
+            </div>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Sedang masuk..." : "Masuk"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   )
 }
