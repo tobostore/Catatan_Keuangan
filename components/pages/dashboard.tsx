@@ -1,92 +1,14 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { useFinance } from "@/context/finance-context"
 import { getCategoryColor } from "@/lib/utils"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
+import { BarChart, Bar, LabelList, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
 import { TrendingUp, Wallet, CreditCard, Banknote, ArrowUpRight, ArrowDownLeft } from "lucide-react"
 
 export default function Dashboard() {
   const { transactions, accounts } = useFinance()
-
-  // Untuk menghindari hydration mismatch, gunakan array label bulan statis
-  const MONTH_LABELS_ID = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
-  const monthlyRange = useMemo(() => {
-    const seen = new Set();
-    const arr = [];
-    for (let i = 0; i < 6; i++) {
-      const date = new Date();
-      date.setMonth(date.getMonth() - (5 - i));
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-      if (!seen.has(monthKey)) {
-        seen.add(monthKey);
-        const label = `${MONTH_LABELS_ID[date.getMonth()]} ${date.getFullYear()}`;
-        arr.push({ name: label, key: monthKey });
-      }
-    }
-    return arr;
-  }, []);
-
-  const monthlyTotals = useMemo(() => {
-    return transactions.reduce((map, transaction) => {
-      const monthKey = transaction.date.slice(0, 7)
-      if (!map.has(monthKey)) {
-        map.set(monthKey, { income: 0, expense: 0 })
-      }
-      const entry = map.get(monthKey)!
-      if (transaction.type === "income") {
-        entry.income += transaction.amount
-      } else {
-        entry.expense += transaction.amount
-      }
-      return map
-    }, new Map<string, { income: number; expense: number }>())
-  }, [transactions])
-
-  const monthlyData = monthlyRange.map(({ name, key }) => {
-    const entry = monthlyTotals.get(key);
-    return {
-      name,
-      income: entry?.income ?? 0,
-      expense: entry?.expense ?? 0,
-    };
-  });
-
-  // Aggregate all income and all expense for a single bar each (total summary)
-  const totalIncomeExpense = useMemo(() => {
-    let income = 0;
-    let expense = 0;
-    transactions.forEach((t) => {
-      if (t.type === "income") income += t.amount;
-      else expense += t.amount;
-    });
-    return { income, expense };
-  }, [transactions]);
-
-  const totalData = [
-    { name: "Pemasukan", value: totalIncomeExpense.income, income: totalIncomeExpense.income, expense: 0 },
-    { name: "Pengeluaran", value: totalIncomeExpense.expense, income: 0, expense: totalIncomeExpense.expense },
-  ];
-
-  // State for chart view toggle (monthly or total)
-  const [chartView, setChartView] = useState<'monthly' | 'total'>('monthly');
-  const chartData = chartView === 'monthly' ? monthlyData : totalData;
-
-  const expenseByCategory = useMemo(() => {
-    const grouped = transactions
-      .filter((t) => t.type === "expense")
-      .reduce((map, transaction) => {
-        map.set(transaction.category, (map.get(transaction.category) || 0) + transaction.amount)
-        return map
-      }, new Map<string, number>())
-
-    return Array.from(grouped.entries()).map(([name, value]) => ({ name, value }))
-  }, [transactions])
-
-  const expenseSliceColors = useMemo(() => {
-    return expenseByCategory.map((entry) => getCategoryColor(entry.name, "expense"))
-  }, [expenseByCategory])
 
   const accountBalances = useMemo(() => {
     return accounts.map((account) => {
@@ -115,6 +37,82 @@ export default function Dashboard() {
       }
     })
   }, [accounts, transactions])
+
+  const chartData = useMemo(() => {
+    return accountBalances.map((account) => ({
+      name: account.name,
+      income: account.totalIncome,
+      expense: account.totalExpense,
+    }))
+  }, [accountBalances])
+
+  // Responsive helper: detect small screen to adjust chart labels
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  const chartMargin = {
+    top: 16,
+    right: 24,
+    left: 32,
+    bottom: isMobile ? 48 : 0,
+  }
+
+  const expenseByCategory = useMemo(() => {
+    const grouped = transactions
+      .filter((t) => t.type === "expense")
+      .reduce((map, transaction) => {
+        map.set(transaction.category, (map.get(transaction.category) || 0) + transaction.amount)
+        return map
+      }, new Map<string, number>())
+
+    return Array.from(grouped.entries()).map(([name, value]) => ({ name, value }))
+  }, [transactions])
+
+  const expenseSliceColors = useMemo(() => {
+    // Try to use category colors from getCategoryColor, but if many categories are
+    // missing mapping or produce duplicates, fall back to a vibrant palette.
+    const fallbackPalette = [
+      '#ef4444', // red
+      '#f97316', // orange
+      '#f59e0b', // amber
+      '#eab308', // yellow
+      '#10b981', // green
+      '#06b6d4', // cyan
+      '#3b82f6', // blue
+      '#6366f1', // indigo
+      '#8b5cf6', // violet
+      '#ec4899', // pink
+      '#94a3b8', // cool gray
+    ]
+
+    const used = new Set<string>()
+    let fallbackIndex = 0
+
+    return expenseByCategory.map((entry) => {
+      const color = getCategoryColor(entry.name, 'expense')
+      // default gray in utils is '#6b7280'
+      if (!color || color === '#6b7280' || used.has(color)) {
+        // pick next unused color from palette
+        let pick = fallbackPalette[fallbackIndex % fallbackPalette.length]
+        while (used.has(pick)) {
+          fallbackIndex++
+          pick = fallbackPalette[fallbackIndex % fallbackPalette.length]
+        }
+        used.add(pick)
+        fallbackIndex++
+        return pick
+      }
+
+      used.add(color)
+      return color
+    })
+  }, [expenseByCategory])
 
   const totalBalance = useMemo(() => {
     return accountBalances.reduce((sum, account) => sum + account.balance, 0)
@@ -154,7 +152,6 @@ export default function Dashboard() {
         <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
           Dashboard Keuangan
         </h1>
-        <p className="text-muted-foreground mt-2 text-lg">Kelola dan pantau seluruh aset finansial Anda</p>
       </div>
 
       {/* Summary Stats */}
@@ -290,36 +287,23 @@ export default function Dashboard() {
             <div className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-primary" />
               <div>
-                <CardTitle className="text-xl">Tren Pemasukan & Pengeluaran</CardTitle>
-                <CardDescription>
-                  {chartView === 'monthly'
-                    ? 'Perbandingan pemasukan & pengeluaran 6 bulan terakhir'
-                    : 'Perbandingan total pemasukan dan pengeluaran'}
-                </CardDescription>
+                <CardTitle className="text-xl">Tren Pemasukan & Pengeluaran per Sumber</CardTitle>
+                <CardDescription>Perbandingan pemasukan & pengeluaran untuk setiap akun</CardDescription>
               </div>
-            </div>
-            {/* Toggle for chart view */}
-            <div className="mt-4 flex gap-2">
-              <button
-                className={`px-3 py-1 rounded text-sm font-medium border ${chartView === 'monthly' ? 'bg-primary text-white' : 'bg-card text-foreground border-border'}`}
-                onClick={() => setChartView('monthly')}
-              >
-                Bulanan
-              </button>
-              <button
-                className={`px-3 py-1 rounded text-sm font-medium border ${chartView === 'total' ? 'bg-primary text-white' : 'bg-card text-foreground border-border'}`}
-                onClick={() => setChartView('total')}
-              >
-                Total
-              </button>
             </div>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={chartData} margin={{ top: 16, right: 24, left: 32, bottom: 0 }}>
+              <BarChart data={chartData} margin={chartMargin}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                <XAxis dataKey="name" stroke="var(--color-muted-foreground)" />
-                <YAxis stroke="var(--color-muted-foreground)" />
+                <XAxis
+                  dataKey="name"
+                  stroke="var(--color-muted-foreground)"
+                  interval={0}
+                  tick={{ fontSize: isMobile ? 10 : 12, transform: isMobile ? 'rotate(-30)' : undefined, textAnchor: isMobile ? 'end' : 'middle' }}
+                  tickFormatter={(value) => (isMobile && typeof value === 'string' && value.length > 10 ? `${value.slice(0, 10)}...` : value)}
+                />
+                <YAxis stroke="var(--color-muted-foreground)" tickFormatter={(value) => formatCurrency(value as number)} />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "var(--color-card)",
@@ -328,8 +312,16 @@ export default function Dashboard() {
                   }}
                   formatter={(value) => formatCurrency(value as number)}
                 />
-                <Bar dataKey="income" fill="var(--color-chart-1)" radius={[8, 8, 0, 0]} />
-                <Bar dataKey="expense" fill="var(--color-chart-3)" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="income" name="Pemasukan" fill="var(--color-chart-1)" radius={[8, 8, 0, 0]}>
+                  {!isMobile && (
+                    <LabelList dataKey="income" position="top" formatter={(value: number) => formatCurrency(value)} />
+                  )}
+                </Bar>
+                <Bar dataKey="expense" name="Pengeluaran" fill="var(--color-chart-3)" radius={[8, 8, 0, 0]}>
+                  {!isMobile && (
+                    <LabelList dataKey="expense" position="top" formatter={(value: number) => formatCurrency(value)} />
+                  )}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

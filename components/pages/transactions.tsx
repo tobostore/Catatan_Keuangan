@@ -203,7 +203,6 @@ export default function Transactions() {
       <div className="flex flex-col gap-4 lg:flex-row">
         <div className="flex-1 space-y-2">
           <h1 className="text-3xl font-semibold text-foreground">Transaksi</h1>
-          <p className="text-muted-foreground">Kelola pengeluaran dan pemasukan dengan lebih rapi.</p>
         </div>
         <div className="flex flex-col gap-4 lg:w-1/3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-1">
