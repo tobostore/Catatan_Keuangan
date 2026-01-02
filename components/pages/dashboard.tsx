@@ -75,8 +75,9 @@ export default function Dashboard() {
   }, [transactions])
 
   const expenseSliceColors = useMemo(() => {
-    // Try to use category colors from getCategoryColor, but if many categories are
-    // missing mapping or produce duplicates, fall back to a vibrant palette.
+    // Use category color if defined in utils, otherwise pick a stable color
+    // from the fallback palette by hashing the category name so the same
+    // category always gets the same color across renders.
     const fallbackPalette = [
       '#ef4444', // red
       '#f97316', // orange
@@ -91,27 +92,24 @@ export default function Dashboard() {
       '#94a3b8', // cool gray
     ]
 
-    const used = new Set<string>()
-    let fallbackIndex = 0
+    const paletteLen = fallbackPalette.length
 
-    return expenseByCategory.map((entry) => {
-      const color = getCategoryColor(entry.name, 'expense')
-      // default gray in utils is '#6b7280'
-      if (!color || color === '#6b7280' || used.has(color)) {
-        // pick next unused color from palette
-        let pick = fallbackPalette[fallbackIndex % fallbackPalette.length]
-        while (used.has(pick)) {
-          fallbackIndex++
-          pick = fallbackPalette[fallbackIndex % fallbackPalette.length]
-        }
-        used.add(pick)
-        fallbackIndex++
-        return pick
+    const hashToIndex = (s: string) => {
+      let h = 0
+      for (let i = 0; i < s.length; i++) {
+        h = (h << 5) - h + s.charCodeAt(i)
+        h |= 0
       }
+      return Math.abs(h) % paletteLen
+    }
 
-      used.add(color)
-      return color
-    })
+    const colorFor = (category: string) => {
+      const color = getCategoryColor(category, 'expense')
+      if (color && color !== '#6b7280') return color
+      return fallbackPalette[hashToIndex(category)]
+    }
+
+    return expenseByCategory.map((entry) => colorFor(entry.name))
   }, [expenseByCategory])
 
   const totalBalance = useMemo(() => {
@@ -306,10 +304,12 @@ export default function Dashboard() {
                 <YAxis stroke="var(--color-muted-foreground)" tickFormatter={(value) => formatCurrency(value as number)} />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "var(--color-card)",
-                    border: "1px solid var(--color-border)",
+                    backgroundColor: "rgba(255,255,255,0.08)",
+                    border: "1px solid rgba(255,255,255,0.12)",
                     borderRadius: "8px",
+                    color: "var(--color-foreground)",
                   }}
+                  itemStyle={{ color: "var(--color-foreground)" }}
                   formatter={(value) => formatCurrency(value as number)}
                 />
                 <Bar dataKey="income" name="Pemasukan" fill="var(--color-chart-1)" radius={[8, 8, 0, 0]}>
@@ -335,6 +335,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             {expenseByCategory.length > 0 ? (
+              <>
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
@@ -344,6 +345,11 @@ export default function Dashboard() {
                     innerRadius={60}
                     outerRadius={100}
                     paddingAngle={2}
+                    // ensure very small categories get a visible arc
+                    minAngle={5}
+                    // add a white stroke so adjacent thin slices are separated visually
+                    stroke="#ffffff"
+                    strokeWidth={1}
                     dataKey="value"
                   >
                     {expenseByCategory.map((entry, index) => (
@@ -352,14 +358,30 @@ export default function Dashboard() {
                   </Pie>
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "var(--color-card)",
-                      border: "1px solid var(--color-border)",
+                      backgroundColor: "rgba(255,255,255,0.08)",
+                      border: "1px solid rgba(255,255,255,0.12)",
                       borderRadius: "8px",
+                      color: "var(--color-foreground)",
                     }}
+                    itemStyle={{ color: "var(--color-foreground)" }}
                     formatter={(value) => formatCurrency(value as number)}
                   />
                 </PieChart>
               </ResponsiveContainer>
+              {/* Legend for small slices: shows color swatch, name and formatted value */}
+              <div className="mt-4 flex flex-wrap gap-3">
+                {expenseByCategory.map((entry, idx) => (
+                  <div key={entry.name} className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span
+                      className="w-4 h-4 rounded-full"
+                      style={{ backgroundColor: expenseSliceColors[idx], boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.04)' }}
+                    />
+                    <span className="font-medium text-foreground">{entry.name}</span>
+                    <span className="ml-2 text-xs text-muted-foreground">{formatCurrency(entry.value)}</span>
+                  </div>
+                ))}
+              </div>
+              </>
             ) : (
               <div className="flex h-[300px] items-center justify-center text-muted-foreground text-sm">
                 Belum ada data pengeluaran

@@ -168,25 +168,46 @@ export default function Reports() {
                     data={incomeByCategory}
                     cx="50%"
                     cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={2}
+                    minAngle={5}
+                    stroke="var(--color-card)"
+                    strokeWidth={1}
                     dataKey="value"
                   >
                     {incomeByCategory.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={incomeCategoryColors[index]} />
+                      <Cell key={`cell-income-${index}`} fill={incomeCategoryColors[index]} />
                     ))}
                   </Pie>
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "var(--color-card)",
-                      border: "1px solid var(--color-border)",
+                      backgroundColor: "rgba(255,255,255,0.08)",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      borderRadius: "8px",
+                      color: "var(--color-foreground)",
                     }}
+                    itemStyle={{ color: "var(--color-foreground)" }}
                     formatter={(value) => formatCurrency(value as number)}
                   />
                 </PieChart>
               </ResponsiveContainer>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {incomeByCategory.map((entry, idx) => (
+                  <div
+                    key={`income-legend-${entry.name}`}
+                    className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-foreground"
+                  >
+                    <span
+                      className="w-4 h-4 rounded-full"
+                      style={{ backgroundColor: incomeCategoryColors[idx], boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.05)" }}
+                    />
+                    <span className="font-medium">{entry.name}</span>
+                    <span className="text-xs opacity-80">{formatCurrency(entry.value)}</span>
+                    <span className="text-xs opacity-80">({calculatePercentage(entry.value, income)}%)</span>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         )}
@@ -204,25 +225,46 @@ export default function Reports() {
                     data={expenseByCategory}
                     cx="50%"
                     cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={2}
+                    minAngle={5}
+                    stroke="var(--color-card)"
+                    strokeWidth={1}
                     dataKey="value"
                   >
                     {expenseByCategory.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={expenseCategoryColors[index]} />
+                      <Cell key={`cell-expense-${index}`} fill={expenseCategoryColors[index]} />
                     ))}
                   </Pie>
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "var(--color-card)",
-                      border: "1px solid var(--color-border)",
+                      backgroundColor: "rgba(255,255,255,0.08)",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      borderRadius: "8px",
+                      color: "var(--color-foreground)",
                     }}
+                    itemStyle={{ color: "var(--color-foreground)" }}
                     formatter={(value) => formatCurrency(value as number)}
                   />
                 </PieChart>
               </ResponsiveContainer>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {expenseByCategory.map((entry, idx) => (
+                  <div
+                    key={`expense-legend-${entry.name}`}
+                    className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-foreground"
+                  >
+                    <span
+                      className="w-4 h-4 rounded-full"
+                      style={{ backgroundColor: expenseCategoryColors[idx], boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.05)" }}
+                    />
+                    <span className="font-medium">{entry.name}</span>
+                    <span className="text-xs opacity-80">{formatCurrency(entry.value)}</span>
+                    <span className="text-xs opacity-80">({calculatePercentage(entry.value, expense)}%)</span>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         )}

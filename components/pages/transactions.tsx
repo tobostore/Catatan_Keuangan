@@ -235,7 +235,7 @@ export default function Transactions() {
 
       {/* Form */}
       {showForm && (
-        <Card className="border-none bg-white/70 shadow-lg shadow-black/5 backdrop-blur">
+        <Card className="border-none bg-[color:var(--color-card)] shadow-lg shadow-black/5 backdrop-blur">
           <CardHeader>
             <CardTitle>{editingId ? "Edit Transaksi" : "Tambah Transaksi Baru"}</CardTitle>
           </CardHeader>
@@ -330,7 +330,7 @@ export default function Transactions() {
       )}
 
       {/* Transactions List */}
-      <Card className="border-none bg-white/80 shadow-lg shadow-black/5 backdrop-blur">
+      <Card className="border-none bg-[color:var(--color-card)] shadow-lg shadow-black/5 backdrop-blur">
         <CardHeader>
           <CardTitle>Daftar Transaksi</CardTitle>
           <CardDescription>
@@ -343,7 +343,7 @@ export default function Transactions() {
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
-            <div className="space-y-4 rounded-3xl border border-border/40 bg-white/70 p-4 shadow-inner shadow-black/5">
+            <div className="space-y-4 rounded-3xl border border-border/40 bg-[color:var(--color-card)] p-4 shadow-inner shadow-black/5">
               <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-muted-foreground">Cari cepat</label>
@@ -411,7 +411,7 @@ export default function Transactions() {
                 filteredTransactions.map((transaction) => (
                   <div
                     key={transaction.id}
-                    className="flex flex-col gap-4 rounded-2xl border border-border/50 bg-white/70 p-4 shadow-sm transition md:flex-row md:items-center md:justify-between hover:shadow"
+                    className="flex flex-col gap-4 rounded-2xl border border-border/50 bg-[color:var(--color-card)] p-4 shadow-sm transition md:flex-row md:items-center md:justify-between hover:shadow"
                   >
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-foreground">{transaction.description}</p>
