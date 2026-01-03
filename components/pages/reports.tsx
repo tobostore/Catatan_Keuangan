@@ -130,18 +130,18 @@ export default function Reports() {
                   <CardDescription className="text-sm">{s.count} transaksi</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center justify-between gap-6">
-                    <div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
+                    <div className="space-y-1">
                       <div className="text-sm text-muted-foreground">Pemasukan</div>
-                      <div className="text-2xl font-bold text-emerald-600">{formatCurrency(s.income)}</div>
+                      <div className="text-2xl font-bold text-emerald-500">{formatCurrency(s.income)}</div>
                     </div>
-                    <div>
+                    <div className="space-y-1">
                       <div className="text-sm text-muted-foreground">Pengeluaran</div>
-                      <div className="text-2xl font-bold text-rose-600">{formatCurrency(s.expense)}</div>
+                      <div className="text-2xl font-bold text-rose-500">{formatCurrency(s.expense)}</div>
                     </div>
-                    <div className="text-right">
+                    <div className="space-y-1 sm:text-right">
                       <div className="text-sm text-muted-foreground">Rasio Saving</div>
-                      <div className="text-xl font-bold text-blue-600">
+                      <div className="text-xl font-bold text-blue-400">
                         {s.income === 0 ? '0%' : `${calculatePercentage(s.income - s.expense, s.income)}%`}
                       </div>
                     </div>

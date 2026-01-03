@@ -157,8 +157,8 @@ export default function Dashboard() {
         <section className="animate-fade-in">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Total Balance Card */}
-            <Card className="relative overflow-hidden border-0 shadow-lg">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-accent/10" />
+            <Card className="relative overflow-hidden border border-border/60 shadow-lg bg-background/70 backdrop-blur">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/15 to-accent/5" />
               <CardHeader className="pb-2 relative z-10">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-medium text-muted-foreground">Total Saldo</CardTitle>
@@ -172,8 +172,8 @@ export default function Dashboard() {
             </Card>
 
             {/* Total Income Card */}
-            <Card className="relative overflow-hidden border-0 shadow-lg">
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-100/20 to-emerald-50/10" />
+            <Card className="relative overflow-hidden border border-border/60 shadow-lg bg-background/70 backdrop-blur">
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/15 to-emerald-500/5" />
               <CardHeader className="pb-2 relative z-10">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-medium text-muted-foreground">Total Pemasukan</CardTitle>
@@ -187,8 +187,8 @@ export default function Dashboard() {
             </Card>
 
             {/* Total Expense Card */}
-            <Card className="relative overflow-hidden border-0 shadow-lg">
-              <div className="absolute inset-0 bg-gradient-to-br from-rose-100/20 to-rose-50/10" />
+            <Card className="relative overflow-hidden border border-border/60 shadow-lg bg-background/70 backdrop-blur">
+              <div className="absolute inset-0 bg-gradient-to-br from-rose-500/15 to-rose-500/5" />
               <CardHeader className="pb-2 relative z-10">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-medium text-muted-foreground">Total Pengeluaran</CardTitle>
@@ -218,7 +218,7 @@ export default function Dashboard() {
             {accountBalances.map((account, idx) => (
               <Card
                 key={account.id}
-                className="relative overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105"
+                className="relative overflow-hidden border border-border/60 shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 bg-background/80 backdrop-blur"
                 style={{
                   animation: `slideUp 0.5s ease-out ${idx * 0.1}s both`,
                 }}
@@ -226,10 +226,10 @@ export default function Dashboard() {
                 <div
                   className={`absolute inset-0 bg-gradient-to-br ${
                     idx % 3 === 0
-                      ? "from-blue-50/40 to-cyan-50/40"
+                      ? "from-slate-800/60 to-cyan-700/30"
                       : idx % 3 === 1
-                        ? "from-emerald-50/40 to-teal-50/40"
-                        : "from-indigo-50/40 to-purple-50/40"
+                        ? "from-emerald-800/60 to-teal-700/30"
+                        : "from-indigo-800/60 to-purple-700/30"
                   }`}
                 />
                 <CardHeader className="pb-3 relative z-10">
