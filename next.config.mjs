@@ -1,8 +1,7 @@
 /** @type {import('next').NextConfig} */
 // next.config.mjs
-const nextConfig = {
-  experimental: {
-    allowedDevOrigins: ["https://uangku.projektobi.my.id"],
-  },
-};
+// Cleaned next config: removed invalid `experimental.allowedDevOrigins`
+// If you need to allow dev origins, configure them in your deployment or
+// use a supported Next config key. See Next.js docs for details.
+const nextConfig = {};
 export default nextConfig;
