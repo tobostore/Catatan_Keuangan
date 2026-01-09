@@ -1,7 +1,7 @@
 "use client"
 
 import { useFinance } from "@/context/finance-context"
-import { useMemo } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
 import { getCategoryColor } from "@/lib/utils"
@@ -82,6 +82,19 @@ export default function Reports() {
     }).format(value)
   }
 
+  const [chartHeight, setChartHeight] = useState<number>(300)
+
+  useEffect(() => {
+    function update() {
+      const w = typeof window !== "undefined" ? window.innerWidth : 1024
+      // if width < 640 (sm) use smaller chart height
+      setChartHeight(w < 640 ? 220 : 300)
+    }
+    update()
+    window.addEventListener("resize", update)
+    return () => window.removeEventListener("resize", update)
+  }, [])
+
   const sourceSummaries = useMemo(() => {
     // Summarize income & expense per account (sumber)
     return accounts.map((account) => {
@@ -111,7 +124,7 @@ export default function Reports() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-4 sm:px-0">
       <div>
         <h1 className="text-3xl font-bold text-foreground">Laporan Analisis</h1>
         <p className="text-muted-foreground mt-1">Analisis detail keuangan Anda</p>
@@ -124,24 +137,24 @@ export default function Reports() {
         <section>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {sourceSummaries.map((s) => (
-              <Card key={s.id} className="p-6">
+              <Card key={s.id} className="p-4 sm:p-6">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg font-semibold">{s.name}</CardTitle>
                   <CardDescription className="text-sm">{s.count} transaksi</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                     <div className="space-y-1">
-                      <div className="text-sm text-muted-foreground">Pemasukan</div>
-                      <div className="text-2xl font-bold text-emerald-500">{formatCurrency(s.income)}</div>
+                      <div className="text-sm text-muted-foreground truncate">Pemasukan</div>
+                      <div className="text-xl sm:text-2xl font-bold text-emerald-500 break-words">{formatCurrency(s.income)}</div>
                     </div>
                     <div className="space-y-1">
-                      <div className="text-sm text-muted-foreground">Pengeluaran</div>
-                      <div className="text-2xl font-bold text-rose-500">{formatCurrency(s.expense)}</div>
+                      <div className="text-sm text-muted-foreground truncate">Pengeluaran</div>
+                      <div className="text-xl sm:text-2xl font-bold text-rose-500 break-words">{formatCurrency(s.expense)}</div>
                     </div>
-                    <div className="space-y-1 sm:text-right">
+                    <div className="space-y-1 md:text-right text-left">
                       <div className="text-sm text-muted-foreground">Rasio Saving</div>
-                      <div className="text-xl font-bold text-blue-400">
+                      <div className="text-lg sm:text-xl font-bold text-blue-400">
                         {s.income === 0 ? '0%' : `${calculatePercentage(s.income - s.expense, s.income)}%`}
                       </div>
                     </div>
@@ -162,7 +175,7 @@ export default function Reports() {
               <CardDescription>Komposisi sumber pemasukan</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={chartHeight}>
                 <PieChart>
                   <Pie
                     data={incomeByCategory}
@@ -192,11 +205,11 @@ export default function Reports() {
                   />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-col gap-2">
                 {incomeByCategory.map((entry, idx) => (
                   <div
                     key={`income-legend-${entry.name}`}
-                    className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-foreground"
+                    className="w-full flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-foreground"
                   >
                     <span
                       className="w-4 h-4 rounded-full"
@@ -219,7 +232,7 @@ export default function Reports() {
               <CardDescription>Komposisi pengeluaran Anda</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={chartHeight}>
                 <PieChart>
                   <Pie
                     data={expenseByCategory}
@@ -249,11 +262,11 @@ export default function Reports() {
                   />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-col gap-2">
                 {expenseByCategory.map((entry, idx) => (
                   <div
                     key={`expense-legend-${entry.name}`}
-                    className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-foreground"
+                    className="w-full flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-foreground"
                   >
                     <span
                       className="w-4 h-4 rounded-full"
