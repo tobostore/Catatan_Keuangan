@@ -60,7 +60,7 @@ export default function Dashboard() {
     top: 16,
     right: 24,
     left: 32,
-    bottom: isMobile ? 48 : 0,
+    bottom: isMobile ? 56 : 16,
   }
 
   const expenseByCategory = useMemo(() => {
@@ -144,58 +144,55 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-8 pb-8">
+    <div className="space-y-6 pb-6">
       {/* Header Section */}
-      <div className="animate-slide-up">
-        <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+      <div>
+        <h1 className="text-3xl md:text-4xl font-semibold text-foreground">
           Dashboard Keuangan
         </h1>
       </div>
 
       {/* Summary Stats */}
       {accountBalances.length > 0 && (
-        <section className="animate-fade-in">
+        <section>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Total Balance Card */}
-            <Card className="relative overflow-hidden border border-border/60 shadow-lg bg-background/70 backdrop-blur">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/15 to-accent/5" />
-              <CardHeader className="pb-2 relative z-10">
+            <Card className="border shadow-sm bg-card">
+              <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-medium text-muted-foreground">Total Saldo</CardTitle>
                   <Wallet className="h-5 w-5 text-primary" />
                 </div>
               </CardHeader>
-              <CardContent className="relative z-10">
+              <CardContent>
                 <div className="text-3xl font-bold text-foreground">{formatCurrency(totalBalance)}</div>
                 <p className="text-xs text-muted-foreground mt-2">Dari {accountBalances.length} rekening</p>
               </CardContent>
             </Card>
 
             {/* Total Income Card */}
-            <Card className="relative overflow-hidden border border-border/60 shadow-lg bg-background/70 backdrop-blur">
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/15 to-emerald-500/5" />
-              <CardHeader className="pb-2 relative z-10">
+            <Card className="border shadow-sm bg-card">
+              <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-medium text-muted-foreground">Total Pemasukan</CardTitle>
                   <ArrowDownLeft className="h-5 w-5 text-emerald-600" />
                 </div>
               </CardHeader>
-              <CardContent className="relative z-10">
+              <CardContent>
                 <div className="text-3xl font-bold text-emerald-600">{formatCurrency(totalIncome)}</div>
                 <p className="text-xs text-muted-foreground mt-2">Bulan ini</p>
               </CardContent>
             </Card>
 
             {/* Total Expense Card */}
-            <Card className="relative overflow-hidden border border-border/60 shadow-lg bg-background/70 backdrop-blur">
-              <div className="absolute inset-0 bg-gradient-to-br from-rose-500/15 to-rose-500/5" />
-              <CardHeader className="pb-2 relative z-10">
+            <Card className="border shadow-sm bg-card">
+              <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-medium text-muted-foreground">Total Pengeluaran</CardTitle>
                   <ArrowUpRight className="h-5 w-5 text-rose-600" />
                 </div>
               </CardHeader>
-              <CardContent className="relative z-10">
+              <CardContent>
                 <div className="text-3xl font-bold text-rose-600">{formatCurrency(totalExpense)}</div>
                 <p className="text-xs text-muted-foreground mt-2">Bulan ini</p>
               </CardContent>
@@ -206,7 +203,7 @@ export default function Dashboard() {
 
       {/* Accounts Grid */}
       {accountBalances.length > 0 && (
-        <section className="space-y-4 animate-slide-up">
+        <section className="space-y-4">
           <div>
             <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
               <CreditCard className="h-6 w-6 text-primary" />
@@ -215,43 +212,20 @@ export default function Dashboard() {
             <p className="text-muted-foreground text-sm mt-1">Kelola semua rekening dan dompet digital</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-            {accountBalances.map((account, idx) => (
-              <Card
-                key={account.id}
-                className="relative overflow-hidden border border-border/60 shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 bg-background/80 backdrop-blur"
-                style={{
-                  animation: `slideUp 0.5s ease-out ${idx * 0.1}s both`,
-                }}
-              >
-                <div
-                  className={`absolute inset-0 bg-gradient-to-br ${
-                    idx % 3 === 0
-                      ? "from-slate-800/60 to-cyan-700/30"
-                      : idx % 3 === 1
-                        ? "from-emerald-800/60 to-teal-700/30"
-                        : "from-indigo-800/60 to-purple-700/30"
-                  }`}
-                />
-                <CardHeader className="pb-3 relative z-10">
+            {accountBalances.map((account) => (
+              <Card key={account.id} className="border shadow-sm bg-card">
+                <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div>
                       <CardTitle className="text-lg font-semibold text-foreground">{account.name}</CardTitle>
                       <CardDescription className="text-xs mt-1">{account.institution || account.type}</CardDescription>
                     </div>
-                    <div
-                      className={`p-2 rounded-lg ${
-                        idx % 3 === 0
-                          ? "bg-blue-100/60 text-blue-600"
-                          : idx % 3 === 1
-                            ? "bg-emerald-100/60 text-emerald-600"
-                            : "bg-indigo-100/60 text-indigo-600"
-                      }`}
-                    >
+                    <div className="p-2 rounded-lg bg-muted text-primary">
                       {getAccountIcon(account.type)}
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="relative z-10">
+                <CardContent>
                   <dl className="space-y-3">
                     <div className="flex items-center justify-between">
                       <dt className="text-xs text-muted-foreground font-medium">Pemasukan</dt>
@@ -278,9 +252,9 @@ export default function Dashboard() {
       )}
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Bar Chart */}
-        <Card className="lg:col-span-2 border-0 shadow-lg">
+        <Card className="lg:col-span-2 border shadow-sm">
           <CardHeader>
             <div className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-primary" />
@@ -298,8 +272,16 @@ export default function Dashboard() {
                   dataKey="name"
                   stroke="var(--color-muted-foreground)"
                   interval={0}
-                  tick={{ fontSize: isMobile ? 10 : 12, transform: isMobile ? 'rotate(-30)' : undefined, textAnchor: isMobile ? 'end' : 'middle' }}
-                  tickFormatter={(value) => (isMobile && typeof value === 'string' && value.length > 10 ? `${value.slice(0, 10)}...` : value)}
+                  height={isMobile ? 56 : 36}
+                  angle={isMobile ? -30 : 0}
+                  textAnchor={isMobile ? "end" : "middle"}
+                  tickMargin={10}
+                  tick={{ fontSize: isMobile ? 10 : 12 }}
+                  tickFormatter={(value) =>
+                    isMobile && typeof value === "string" && value.length > 10
+                      ? `${value.slice(0, 10)}...`
+                      : value
+                  }
                 />
                 <YAxis stroke="var(--color-muted-foreground)" tickFormatter={(value) => formatCurrency(value as number)} />
                 <Tooltip
@@ -328,7 +310,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Pie Chart */}
-        <Card className="border-0 shadow-lg">
+        <Card className="border shadow-sm">
           <CardHeader>
             <CardTitle className="text-xl">Komposisi Pengeluaran</CardTitle>
             <CardDescription className="text-xs">Breakdown per kategori</CardDescription>
@@ -392,7 +374,7 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Transactions */}
-      <Card className="border-0 shadow-lg animate-fade-in">
+      <Card className="border shadow-sm">
         <CardHeader>
           <div className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-primary" />
@@ -407,13 +389,10 @@ export default function Dashboard() {
         <CardContent>
           {transactions.length > 0 ? (
             <div className="space-y-1">
-              {transactions.slice(0, 5).map((transaction, idx) => (
+              {transactions.slice(0, 5).map((transaction) => (
                 <div
                   key={transaction.id}
                   className="flex items-center justify-between p-4 rounded-lg hover:bg-muted/50 transition-colors duration-200"
-                  style={{
-                    animation: `slideUp 0.4s ease-out ${idx * 0.05}s both`,
-                  }}
                 >
                   <div className="flex-1">
                     <p className="font-semibold text-foreground text-sm md:text-base">{transaction.description}</p>

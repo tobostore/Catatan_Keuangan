@@ -130,14 +130,12 @@ export default function Reports() {
         <p className="text-muted-foreground mt-1">Analisis detail keuangan Anda</p>
       </div>
 
-      
-
       {/* Summary Per Sumber (akun) */}
       {sourceSummaries.length > 0 && (
         <section>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {sourceSummaries.map((s) => (
-              <Card key={s.id} className="p-4 sm:p-6">
+              <Card key={s.id} className="border shadow-sm p-4 sm:p-6">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg font-semibold">{s.name}</CardTitle>
                   <CardDescription className="text-sm">{s.count} transaksi</CardDescription>
@@ -154,7 +152,7 @@ export default function Reports() {
                     </div>
                     <div className="space-y-1 md:text-right text-left">
                       <div className="text-sm text-muted-foreground">Rasio Saving</div>
-                      <div className="text-lg sm:text-xl font-bold text-blue-400">
+                      <div className="text-lg sm:text-xl font-bold text-primary">
                         {s.income === 0 ? '0%' : `${calculatePercentage(s.income - s.expense, s.income)}%`}
                       </div>
                     </div>
@@ -169,7 +167,7 @@ export default function Reports() {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {incomeByCategory.length > 0 && (
-          <Card>
+          <Card className="border shadow-sm">
             <CardHeader>
               <CardTitle>Pemasukan per Kategori</CardTitle>
               <CardDescription>Komposisi sumber pemasukan</CardDescription>
@@ -195,8 +193,8 @@ export default function Reports() {
                   </Pie>
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "rgba(255,255,255,0.08)",
-                      border: "1px solid rgba(255,255,255,0.12)",
+                      backgroundColor: "var(--color-card)",
+                      border: "1px solid var(--color-border)",
                       borderRadius: "8px",
                       color: "var(--color-foreground)",
                     }}
@@ -209,7 +207,7 @@ export default function Reports() {
                 {incomeByCategory.map((entry, idx) => (
                   <div
                     key={`income-legend-${entry.name}`}
-                    className="w-full flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-foreground"
+                    className="w-full flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm text-foreground bg-background"
                   >
                     <span
                       className="w-4 h-4 rounded-full"
@@ -226,7 +224,7 @@ export default function Reports() {
         )}
 
         {expenseByCategory.length > 0 && (
-          <Card>
+          <Card className="border shadow-sm">
             <CardHeader>
               <CardTitle>Pengeluaran per Kategori</CardTitle>
               <CardDescription>Komposisi pengeluaran Anda</CardDescription>
@@ -252,8 +250,8 @@ export default function Reports() {
                   </Pie>
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "rgba(255,255,255,0.08)",
-                      border: "1px solid rgba(255,255,255,0.12)",
+                      backgroundColor: "var(--color-card)",
+                      border: "1px solid var(--color-border)",
                       borderRadius: "8px",
                       color: "var(--color-foreground)",
                     }}
@@ -266,7 +264,7 @@ export default function Reports() {
                 {expenseByCategory.map((entry, idx) => (
                   <div
                     key={`expense-legend-${entry.name}`}
-                    className="w-full flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-foreground"
+                    className="w-full flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm text-foreground bg-background"
                   >
                     <span
                       className="w-4 h-4 rounded-full"
@@ -284,7 +282,7 @@ export default function Reports() {
       </div>
 
       {/* Detailed Table */}
-      <Card>
+      <Card className="border shadow-sm">
         <CardHeader>
           <CardTitle>Ringkasan Kategori</CardTitle>
           <CardDescription>Detil pengeluaran dan pemasukan per kategori</CardDescription>
@@ -296,7 +294,7 @@ export default function Reports() {
                 <h3 className="font-semibold text-foreground mb-3">Pengeluaran</h3>
                 <div className="space-y-2">
                   {expenseByCategory.map((item) => (
-                    <div key={item.name} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                    <div key={item.name} className="flex items-center justify-between p-3 bg-muted/60 rounded-md border">
                       <span className="text-foreground font-medium">{item.name}</span>
                       <div className="text-right">
                         <p className="font-semibold text-red-500">{formatCurrency(item.value)}</p>
@@ -315,7 +313,7 @@ export default function Reports() {
                 <h3 className="font-semibold text-foreground mb-3">Pemasukan</h3>
                 <div className="space-y-2">
                   {incomeByCategory.map((item) => (
-                    <div key={item.name} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                    <div key={item.name} className="flex items-center justify-between p-3 bg-muted/60 rounded-md border">
                       <span className="text-foreground font-medium">{item.name}</span>
                       <div className="text-right">
                         <p className="font-semibold text-green-500">{formatCurrency(item.value)}</p>

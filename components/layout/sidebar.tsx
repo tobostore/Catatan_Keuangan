@@ -18,9 +18,9 @@ export default function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
   ]
 
   return (
-    <aside className="w-64 bg-card border-r border-border p-6 flex flex-col">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-primary">Finance Manager</h1>
+    <aside className="w-64 bg-card border-r border-border p-5 flex flex-col">
+      <div className="mb-6">
+        <h1 className="text-xl font-semibold text-foreground">Finance Manager</h1>
       </div>
 
       <nav className="flex-1 space-y-2">
@@ -31,8 +31,8 @@ export default function Sidebar({ currentPage, setCurrentPage }: SidebarProps) {
             <button
               key={item.id}
               onClick={() => setCurrentPage(item.id as any)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                isActive ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted"
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors ${
+                isActive ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted"
               }`}
             >
               <Icon className="w-5 h-5" />

@@ -206,20 +206,20 @@ export default function Transactions() {
         </div>
         <div className="flex flex-col gap-4 lg:w-1/3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-1">
-            <div className="rounded-2xl border border-border/60 bg-gradient-to-r from-background/90 via-background to-background/70 p-4 shadow-sm">
+            <div className="rounded-lg border bg-card p-4 shadow-sm">
               <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <span>Total Saldo</span>
                 <Wallet className="h-4 w-4" />
               </div>
               <p className="mt-2 text-2xl font-semibold text-foreground">{formatCurrency(balance)}</p>
             </div>
-            <div className="rounded-2xl border border-emerald-200/50 bg-emerald-500/5 p-4 shadow-sm">
+            <div className="rounded-lg border bg-card p-4 shadow-sm">
               <div className="flex items-center gap-2 text-sm font-medium text-emerald-700">
                 <ArrowDownRight className="h-4 w-4" /> Pemasukan
               </div>
               <p className="mt-2 text-xl font-semibold text-emerald-600">{formatCurrency(totalIncome)}</p>
             </div>
-            <div className="rounded-2xl border border-rose-200/60 bg-rose-500/5 p-4 shadow-sm">
+            <div className="rounded-lg border bg-card p-4 shadow-sm">
               <div className="flex items-center gap-2 text-sm font-medium text-rose-700">
                 <ArrowUpRight className="h-4 w-4" /> Pengeluaran
               </div>
@@ -235,7 +235,7 @@ export default function Transactions() {
 
       {/* Form */}
       {showForm && (
-        <Card className="border-none bg-[color:var(--color-card)] shadow-lg shadow-black/5 backdrop-blur">
+        <Card className="border shadow-sm bg-card">
           <CardHeader>
             <CardTitle>{editingId ? "Edit Transaksi" : "Tambah Transaksi Baru"}</CardTitle>
           </CardHeader>
@@ -330,7 +330,7 @@ export default function Transactions() {
       )}
 
       {/* Transactions List */}
-      <Card className="border-none bg-[color:var(--color-card)] shadow-lg shadow-black/5 backdrop-blur">
+      <Card className="border shadow-sm bg-card">
         <CardHeader>
           <CardTitle>Daftar Transaksi</CardTitle>
           <CardDescription>
@@ -343,7 +343,7 @@ export default function Transactions() {
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
-            <div className="space-y-4 rounded-3xl border border-border/40 bg-[color:var(--color-card)] p-4 shadow-inner shadow-black/5">
+            <div className="space-y-4 rounded-lg border bg-background p-4">
               <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-muted-foreground">Cari cepat</label>
@@ -411,7 +411,7 @@ export default function Transactions() {
                 filteredTransactions.map((transaction) => (
                   <div
                     key={transaction.id}
-                    className="flex flex-col gap-4 rounded-2xl border border-border/50 bg-[color:var(--color-card)] p-4 shadow-sm transition md:flex-row md:items-center md:justify-between hover:shadow"
+                    className="flex flex-col gap-4 rounded-lg border bg-background p-4 transition-colors md:flex-row md:items-center md:justify-between hover:bg-muted/30"
                   >
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-foreground">{transaction.description}</p>

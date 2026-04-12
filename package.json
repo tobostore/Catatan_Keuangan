@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start -p 3100",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:recreate": "node scripts/recreate-db.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

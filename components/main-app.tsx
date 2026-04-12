@@ -27,7 +27,7 @@ export default function MainApp() {
         </div>
 
         <main className="flex-1 overflow-y-auto">
-          <div className="md:hidden flex items-center justify-between px-6 py-4 border-b border-border">
+          <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-border bg-card">
             <div>
               <p className="text-xs text-muted-foreground">Menu</p>
               <p className="text-lg font-semibold text-foreground">Finance Manager</p>
@@ -40,7 +40,7 @@ export default function MainApp() {
             </SheetTrigger>
           </div>
 
-          <div className="p-6">
+          <div className="p-4 md:p-6">
             {currentPage === "dashboard" && <Dashboard />}
             {currentPage === "transactions" && <Transactions />}
             {currentPage === "reports" && <Reports />}
