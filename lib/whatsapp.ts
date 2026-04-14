@@ -6,8 +6,8 @@ const WHATSAPP_SEND_PATH = process.env.WHATSAPP_SEND_PATH ?? "/send/message"
 export type WhatsAppConfig = {
 	baseUrl: string
 	defaultTargets: string[]
-	username: string
-	password: string
+	username?: string
+	password?: string
 	deviceId?: string
 }
 
@@ -23,7 +23,7 @@ type SendPayload = {
 }
 
 export function getWhatsAppConfig(): WhatsAppConfig | null {
-	const baseUrl = process.env.WHATSAPP_API_BASE_URL?.trim()
+	const baseUrl = process.env.WHATSAPP_API_BASE_URL?.trim() || "http://10.20.25.25:3000/"
 	if (!baseUrl) {
 		console.warn("WhatsApp API base URL is not configured; skipping notification send")
 		return null
@@ -31,10 +31,6 @@ export function getWhatsAppConfig(): WhatsAppConfig | null {
 
 	const username = process.env.WHATSAPP_API_USER?.trim()
 	const password = process.env.WHATSAPP_API_PASS?.trim()
-	if (!username || !password) {
-		console.warn("WhatsApp API credentials are missing; skipping notification send")
-		return null
-	}
 
 	const defaultTargets = process.env.WHATSAPP_TARGETS?.split(",").map((target) => target.trim()).filter(Boolean) ?? []
 
@@ -58,8 +54,10 @@ async function callWhatsAppApi(config: WhatsAppConfig, payload: SendPayload) {
 		headers["X-Device-Id"] = config.deviceId
 	}
 
-	const authToken = Buffer.from(`${config.username}:${config.password}`).toString("base64")
-	headers.Authorization = `Basic ${authToken}`
+	if (config.username && config.password) {
+		const authToken = Buffer.from(`${config.username}:${config.password}`).toString("base64")
+		headers.Authorization = `Basic ${authToken}`
+	}
 
 	const response = await fetch(url, {
 		method: "POST",
@@ -91,16 +89,34 @@ export async function sendWhatsAppText({ message, recipients }: SendTextOptions)
 	}
 
 	const sendPromises = sanitizedTargets.map(async (target) => {
-		const payload: SendPayload = {
-			phone: target,
-			message,
+		const candidates = [target]
+		if (target.endsWith("@s.whatsapp.net")) {
+			const digits = target.replace(/@s\.whatsapp\.net$/i, "")
+			if (digits && digits !== target) {
+				candidates.push(digits)
+			}
 		}
 
-		if (config.deviceId) {
-			payload.device_id = config.deviceId
+		let lastError: unknown
+		for (const phone of candidates) {
+			const payload: SendPayload = {
+				phone,
+				message,
+			}
+
+			if (config.deviceId) {
+				payload.device_id = config.deviceId
+			}
+
+			try {
+				await callWhatsAppApi(config, payload)
+				return
+			} catch (error) {
+				lastError = error
+			}
 		}
 
-		await callWhatsAppApi(config, payload)
+		throw lastError ?? new Error("Gagal mengirim pesan WhatsApp")
 	})
 
 	const results = await Promise.allSettled(sendPromises)
@@ -163,9 +179,12 @@ export async function sendTransactionNotification({ userId, recipients, ...trans
 	const message = formatTransactionMessage(transaction)
 	try {
 		const derivedRecipients = await resolveNotificationRecipients(userId, recipients)
+		if (derivedRecipients.length === 0) {
+			return
+		}
 		await sendWhatsAppText({
 			message,
-			recipients: derivedRecipients.length ? derivedRecipients : undefined,
+			recipients: derivedRecipients,
 		})
 	} catch (error) {
 		console.error("Failed to send WhatsApp notification", error)

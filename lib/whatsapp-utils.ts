@@ -16,7 +16,7 @@ export function normalizeWhatsAppJid(value?: string | null) {
   if (trimmed.includes("@")) {
     const lower = trimmed.toLowerCase()
     const [localPartRaw = "", domainPartRaw = ""] = lower.split("@")
-    const [localPart = "", resourcePart = ""] = localPartRaw.split(":")
+    const [localPart = ""] = localPartRaw.split(":")
     const domainPart = domainPartRaw.split(":")[0] ?? domainPartRaw
     const cleanLocal = localPart.split(":")[0] ?? localPart
     if (!domainPart) {
@@ -26,11 +26,7 @@ export function normalizeWhatsAppJid(value?: string | null) {
     if (!cleanDomain) {
       return cleanLocal
     }
-    const base = `${cleanLocal}@${cleanDomain}`
-    if (resourcePart) {
-      return `${base}:${resourcePart}`
-    }
-    return base
+    return `${cleanLocal}@${cleanDomain}`
   }
 
   const digits = trimmed.replace(/[^0-9]/g, "")

@@ -280,7 +280,11 @@ async function fetchChatMessages(
 
   const headers: Record<string, string> = {
     Accept: "application/json",
-    Authorization: buildBasicAuth(config),
+  }
+
+  const basicAuth = buildBasicAuth(config)
+  if (basicAuth) {
+    headers.Authorization = basicAuth
   }
 
   if (config.deviceId) {
@@ -385,6 +389,9 @@ function isNewerMessage(
 }
 
 function buildBasicAuth(config: WhatsAppConfig) {
+  if (!config.username || !config.password) {
+    return undefined
+  }
   const token = Buffer.from(`${config.username}:${config.password}`).toString("base64")
   return `Basic ${token}`
 }

@@ -11,6 +11,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/transactions/external",
   "/api/whatsapp/poller",
   "/api/whatsapp/webhook",
+  "/api/whatsapp/ws",
 ]
 
 export async function middleware(request: NextRequest) {
