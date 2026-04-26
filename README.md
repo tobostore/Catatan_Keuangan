@@ -77,7 +77,7 @@ npm install
 Buat file `.env.local` di root project, lalu isi variabel yang dibutuhkan.
 
 ```env
-DB_HOST=109.111.53.58
+DB_HOST=127.0.0.1
 DB_USER=Catatan_Pengeluaran
 DB_PASSWORD="password_database_anda"
 DB_NAME=catatan_pengeluaran
@@ -89,7 +89,7 @@ Jika password database mengandung karakter `$`, gunakan tanda kutip dan escape a
 Contoh:
 
 ```env
-DB_PASSWORD="Nub132\$132"
+DB_PASSWORD=
 ```
 
 ### 4) Setup database
@@ -123,7 +123,7 @@ Contoh `.env.local` yang lebih lengkap:
 ```env
 AUTH_SECRET=isi_secret_auth_yang_kuat
 AUTH_URL=http://localhost:3000
-DB_HOST=109.111.53.58
+DB_HOST=127.0.0.1
 DB_PORT=33310
 DB_USER=Catatan_Pengeluaran
 DB_PASSWORD="password_database_anda"
