@@ -3,12 +3,126 @@
 import { useMemo, useState, useEffect } from "react"
 import { useFinance } from "@/context/finance-context"
 import { getCategoryColor } from "@/lib/utils"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { BarChart, Bar, LabelList, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
-import { TrendingUp, Wallet, CreditCard, Banknote, ArrowUpRight, ArrowDownLeft } from "lucide-react"
+import {
+  Area,
+  AreaChart,
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+  type TooltipProps,
+} from "recharts"
+import { Wallet, Landmark, Banknote, ArrowUpRight, ArrowDownLeft, Plus, ArrowRight, BadgeDollarSign } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import AlertsPanel from "@/components/AlertsPanel"
+import BudgetAnalysisCard from "@/components/BudgetAnalysisCard"
+
+function AnimatedCounter({ value }: { value: number }) {
+  const [displayValue, setDisplayValue] = useState(0)
+
+  useEffect(() => {
+    const duration = 800
+    const startedAt = performance.now()
+
+    let raf = 0
+    const run = (now: number) => {
+      const progress = Math.min((now - startedAt) / duration, 1)
+      setDisplayValue(value * (1 - (1 - progress) * (1 - progress)))
+      if (progress < 1) {
+        raf = requestAnimationFrame(run)
+      }
+    }
+
+    raf = requestAnimationFrame(run)
+    return () => cancelAnimationFrame(raf)
+  }, [value])
+
+  return (
+    <span>
+      {new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        minimumFractionDigits: 0,
+      }).format(displayValue)}
+    </span>
+  )
+}
+
+function SparklineCard({ data, color }: { data: Array<{ value: number }>; color: string }) {
+  return (
+    <div className="h-12 mt-3">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data}>
+          <defs>
+            <linearGradient id={`spark-${color.replace("#", "")}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={color} stopOpacity={0.45} />
+              <stop offset="95%" stopColor={color} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <Tooltip cursor={false} content={() => null} />
+          <Area
+            type="monotone"
+            dataKey="value"
+            stroke={color}
+            fill={`url(#spark-${color.replace("#", "")})`}
+            strokeWidth={2}
+            isAnimationActive
+            animationDuration={700}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
+function ChartTooltip({ active, payload, label }: TooltipProps<number, string>) {
+  if (!active || !payload?.length) return null
+
+  return (
+    <div className="rounded-xl border border-white/15 bg-[rgba(12,18,30,0.75)] px-3 py-2 backdrop-blur-xl">
+      {label ? <p className="text-xs text-muted mb-1">{String(label)}</p> : null}
+      {payload.map((item) => (
+        <p key={item.name} className="text-xs text-primary flex items-center gap-2">
+          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+          {item.name}: {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(Number(item.value || 0))}
+        </p>
+      ))}
+    </div>
+  )
+}
 
 export default function Dashboard() {
   const { transactions, accounts } = useFinance()
+  const [userId, setUserId] = useState("")
+  const [month, setMonth] = useState("")
+
+  useEffect(() => {
+    const currentMonth = new Date().toISOString().slice(0, 7)
+    setMonth(currentMonth)
+
+    let isMounted = true
+    const loadMe = async () => {
+      try {
+        const res = await fetch("/api/me", { cache: "no-store" })
+        const json = (await res.json()) as { user?: { id?: string } }
+        if (isMounted) {
+          setUserId(String(json.user?.id ?? ""))
+        }
+      } catch (error) {
+        console.error("Load profile for AI cards failed", error)
+      }
+    }
+
+    void loadMe()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   const accountBalances = useMemo(() => {
     return accounts.map((account) => {
@@ -46,7 +160,31 @@ export default function Dashboard() {
     }))
   }, [accountBalances])
 
-  // Responsive helper: detect small screen to adjust chart labels
+  const monthlyTrendData = useMemo(() => {
+    const now = new Date()
+    const labels: string[] = []
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      labels.push(d.toISOString().slice(0, 7))
+    }
+
+    return labels.map((monthKey) => {
+      const monthTransactions = transactions.filter((item) => item.date.startsWith(monthKey))
+      const income = monthTransactions
+        .filter((item) => item.type === "income")
+        .reduce((sum, item) => sum + item.amount, 0)
+      const expense = monthTransactions
+        .filter((item) => item.type === "expense")
+        .reduce((sum, item) => sum + item.amount, 0)
+
+      return {
+        label: new Date(`${monthKey}-01`).toLocaleDateString("id-ID", { month: "short" }),
+        income,
+        expense,
+      }
+    })
+  }, [transactions])
+
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
@@ -59,7 +197,7 @@ export default function Dashboard() {
   const chartMargin = {
     top: 16,
     right: 24,
-    left: 32,
+    left: 8,
     bottom: isMobile ? 56 : 16,
   }
 
@@ -75,21 +213,13 @@ export default function Dashboard() {
   }, [transactions])
 
   const expenseSliceColors = useMemo(() => {
-    // Use category color if defined in utils, otherwise pick a stable color
-    // from the fallback palette by hashing the category name so the same
-    // category always gets the same color across renders.
     const fallbackPalette = [
-      '#ef4444', // red
-      '#f97316', // orange
-      '#f59e0b', // amber
-      '#eab308', // yellow
-      '#10b981', // green
-      '#06b6d4', // cyan
-      '#3b82f6', // blue
-      '#6366f1', // indigo
-      '#8b5cf6', // violet
-      '#ec4899', // pink
-      '#94a3b8', // cool gray
+      '#6ee7b7', // green
+      '#c4b5fd', // accent
+      '#f87171', // red
+      '#93c5fd', // blue
+      '#fca5a5', // pink
+      '#fed7aa', // amber
     ]
 
     const paletteLen = fallbackPalette.length
@@ -124,6 +254,50 @@ export default function Dashboard() {
     return accountBalances.reduce((sum, account) => sum + account.totalExpense, 0)
   }, [accountBalances])
 
+  const monthChange = useMemo(() => {
+    const now = new Date()
+    const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 7)
+    const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 7)
+
+    const sumByType = (month: string, type: "income" | "expense") =>
+      transactions
+        .filter((item) => item.date.startsWith(month) && item.type === type)
+        .reduce((sum, item) => sum + item.amount, 0)
+
+    const currentIncome = sumByType(currentMonth, "income")
+    const previousIncome = sumByType(previousMonth, "income")
+    const currentExpense = sumByType(currentMonth, "expense")
+    const previousExpense = sumByType(previousMonth, "expense")
+
+    const calcPct = (current: number, previous: number) => {
+      if (!previous && !current) return 0
+      if (!previous) return 100
+      return ((current - previous) / previous) * 100
+    }
+
+    return {
+      income: calcPct(currentIncome, previousIncome),
+      expense: calcPct(currentExpense, previousExpense),
+    }
+  }, [transactions])
+
+  const sparkIncome = useMemo(
+    () => monthlyTrendData.map((item) => ({ value: item.income })),
+    [monthlyTrendData],
+  )
+
+  const sparkExpense = useMemo(
+    () => monthlyTrendData.map((item) => ({ value: item.expense })),
+    [monthlyTrendData],
+  )
+
+  const totalExpenseForPie = useMemo(
+    () => expenseByCategory.reduce((sum, item) => sum + item.value, 0),
+    [expenseByCategory],
+  )
+
+  const [activePieIndex, setActivePieIndex] = useState<number | null>(null)
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
@@ -135,288 +309,340 @@ export default function Dashboard() {
   const getAccountIcon = (type: string) => {
     switch (type.toLowerCase()) {
       case "bank":
-        return <CreditCard className="h-5 w-5" />
+        return <Landmark className="h-5 w-5" />
       case "cash":
         return <Banknote className="h-5 w-5" />
+      case "e-wallet":
+      case "ewallet":
+        return <BadgeDollarSign className="h-5 w-5" />
       default:
         return <Wallet className="h-5 w-5" />
     }
   }
 
+  const getAccountAccent = (type: string) => {
+    switch (type.toLowerCase()) {
+      case "bank":
+        return "#4D9FFF"
+      case "cash":
+        return "#00D4AA"
+      case "e-wallet":
+      case "ewallet":
+        return "#FF5C7C"
+      default:
+        return "#7dd3fc"
+    }
+  }
+
+  const goToTransactionsForAccount = (accountId: string) => {
+    window.dispatchEvent(
+      new CustomEvent("kasflow:open-transactions", {
+        detail: { accountId },
+      }),
+    )
+  }
+
   return (
-    <div className="space-y-6 pb-6">
-      {/* Header Section */}
-      <div>
-        <h1 className="text-3xl md:text-4xl font-semibold text-foreground">
-          Dashboard Keuangan
-        </h1>
+    <div className="kasflow-dashboard space-y-6 sm:space-y-7 pb-24">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="kasflow-page-title text-2xl md:text-[28px] font-semibold text-primary mb-1">
+            Dashboard
+          </h1>
+          <p className="text-xs uppercase tracking-[0.2em] text-muted">
+            Kelola keuangan pribadi Anda
+          </p>
+        </div>
+        <Button className="hidden sm:inline-flex bg-gradient-to-r from-[#00D4AA] to-[#4D9FFF] hover:opacity-90 text-[#061220] font-semibold rounded-xl gap-2 shadow-[0_0_20px_rgba(0,212,170,0.25)]">
+          <Plus className="h-4 w-4" />
+          <span>Tambah Transaksi</span>
+        </Button>
       </div>
 
-      {/* Summary Stats */}
       {accountBalances.length > 0 && (
-        <section>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Total Balance Card */}
-            <Card className="border shadow-sm bg-card">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Saldo</CardTitle>
-                  <Wallet className="h-5 w-5 text-primary" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-foreground">{formatCurrency(totalBalance)}</div>
-                <p className="text-xs text-muted-foreground mt-2">Dari {accountBalances.length} rekening</p>
-              </CardContent>
-            </Card>
-
-            {/* Total Income Card */}
-            <Card className="border shadow-sm bg-card">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Pemasukan</CardTitle>
-                  <ArrowDownLeft className="h-5 w-5 text-emerald-600" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-emerald-600">{formatCurrency(totalIncome)}</div>
-                <p className="text-xs text-muted-foreground mt-2">Bulan ini</p>
-              </CardContent>
-            </Card>
-
-            {/* Total Expense Card */}
-            <Card className="border shadow-sm bg-card">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Pengeluaran</CardTitle>
-                  <ArrowUpRight className="h-5 w-5 text-rose-600" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-rose-600">{formatCurrency(totalExpense)}</div>
-                <p className="text-xs text-muted-foreground mt-2">Bulan ini</p>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
-      )}
-
-      {/* Accounts Grid */}
-      {accountBalances.length > 0 && (
-        <section className="space-y-4">
-          <div>
-            <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-              <CreditCard className="h-6 w-6 text-primary" />
-              Akun-akun Anda
-            </h2>
-            <p className="text-muted-foreground text-sm mt-1">Kelola semua rekening dan dompet digital</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-            {accountBalances.map((account) => (
-              <Card key={account.id} className="border shadow-sm bg-card">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-lg font-semibold text-foreground">{account.name}</CardTitle>
-                      <CardDescription className="text-xs mt-1">{account.institution || account.type}</CardDescription>
-                    </div>
-                    <div className="p-2 rounded-lg bg-muted text-primary">
-                      {getAccountIcon(account.type)}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <dl className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <dt className="text-xs text-muted-foreground font-medium">Pemasukan</dt>
-                      <dd className="text-sm font-semibold text-emerald-600">{formatCurrency(account.totalIncome)}</dd>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <dt className="text-xs text-muted-foreground font-medium">Pengeluaran</dt>
-                      <dd className="text-sm font-semibold text-rose-600">{formatCurrency(account.totalExpense)}</dd>
-                    </div>
-                    <div className="pt-3 border-t border-border">
-                      <div className="flex items-center justify-between">
-                        <dt className="text-sm font-semibold text-foreground">Saldo</dt>
-                        <dd className={`text-lg font-bold ${account.balance >= 0 ? "text-primary" : "text-rose-600"}`}>
-                          {formatCurrency(account.balance)}
-                        </dd>
-                      </div>
-                    </div>
-                  </dl>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Bar Chart */}
-        <Card className="lg:col-span-2 border shadow-sm">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-primary" />
-              <div>
-                <CardTitle className="text-xl">Tren Pemasukan & Pengeluaran per Sumber</CardTitle>
-                <CardDescription>Perbandingan pemasukan & pengeluaran untuk setiap akun</CardDescription>
-              </div>
+        <section className="kasflow-summary-cards grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="gradient-border-card glass-card p-4 sm:p-5 animate-slide-in">
+            <div className="flex items-start justify-between mb-3">
+              <span className="text-xs uppercase tracking-[0.15em] text-muted font-semibold">Saldo Total</span>
+              <Wallet className="h-4 w-4 text-[#4D9FFF]" />
             </div>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={chartData} margin={chartMargin}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+            <div className="text-2xl font-bold text-primary mb-1">
+              <AnimatedCounter value={totalBalance} />
+            </div>
+            <p className="text-xs text-secondary">Dari {accountBalances.length} rekening</p>
+          </div>
+
+          <div className="gradient-border-card glass-card p-4 sm:p-5 animate-slide-in" style={{ animationDelay: "60ms" }}>
+            <div className="flex items-start justify-between mb-3">
+              <span className="text-xs uppercase tracking-[0.15em] text-muted font-semibold">Pemasukan</span>
+              <ArrowDownLeft className="h-4 w-4 text-green" />
+            </div>
+            <div className="text-2xl font-bold text-green mb-1">
+              <AnimatedCounter value={totalIncome} />
+            </div>
+            <div className="inline-flex items-center rounded-full border border-[#00D4AA]/35 bg-[#00D4AA]/14 px-2.5 py-1 text-[11px] text-green font-semibold">
+              {monthChange.income >= 0 ? "↑" : "↓"} {Math.abs(monthChange.income).toFixed(0)}%
+            </div>
+            <SparklineCard data={sparkIncome} color="#00D4AA" />
+          </div>
+
+          <div className="gradient-border-card glass-card p-4 sm:p-5 animate-slide-in" style={{ animationDelay: "110ms" }}>
+            <div className="flex items-start justify-between mb-3">
+              <span className="text-xs uppercase tracking-[0.15em] text-muted font-semibold">Pengeluaran</span>
+              <ArrowUpRight className="h-4 w-4 text-red" />
+            </div>
+            <div className="text-2xl font-bold text-red mb-1">
+              <AnimatedCounter value={totalExpense} />
+            </div>
+            <div className="inline-flex items-center rounded-full border border-[#FF5C7C]/35 bg-[#FF5C7C]/14 px-2.5 py-1 text-[11px] text-red font-semibold">
+              {monthChange.expense >= 0 ? "↑" : "↓"} {Math.abs(monthChange.expense).toFixed(0)}%
+            </div>
+            <SparklineCard data={sparkExpense} color="#FF5C7C" />
+          </div>
+        </section>
+      )}
+
+      {userId ? <AlertsPanel userId={userId} /> : null}
+      {userId && month ? <BudgetAnalysisCard userId={userId} month={month} /> : null}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="kasflow-trend-chart lg:col-span-2 glass-card rounded-[14px]">
+          <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-white/10">
+            <h2 className="text-sm font-semibold text-primary mb-1">Tren Pemasukan & Pengeluaran</h2>
+            <p className="text-xs text-secondary">Perbandingan per akun</p>
+          </div>
+          <div className="p-4 sm:p-6">
+            <ResponsiveContainer width="100%" height={isMobile ? 200 : 280}>
+              <AreaChart data={chartData} margin={chartMargin}>
+                <defs>
+                  <linearGradient id="incomeFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#00D4AA" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#00D4AA" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="expenseFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#FF5C7C" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#FF5C7C" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
                 <XAxis
                   dataKey="name"
-                  stroke="var(--color-muted-foreground)"
-                  interval={0}
+                  stroke="var(--text-muted)"
+                  interval={isMobile ? 1 : 0}
                   height={isMobile ? 56 : 36}
                   angle={isMobile ? -30 : 0}
                   textAnchor={isMobile ? "end" : "middle"}
                   tickMargin={10}
-                  tick={{ fontSize: isMobile ? 10 : 12 }}
+                  tick={{ fontSize: 11, fontFamily: 'DM Sans' }}
                   tickFormatter={(value) =>
                     isMobile && typeof value === "string" && value.length > 10
                       ? `${value.slice(0, 10)}...`
                       : value
                   }
                 />
-                <YAxis stroke="var(--color-muted-foreground)" tickFormatter={(value) => formatCurrency(value as number)} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "rgba(255,255,255,0.08)",
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    borderRadius: "8px",
-                    color: "var(--color-foreground)",
-                  }}
-                  itemStyle={{ color: "var(--color-foreground)" }}
-                  formatter={(value) => formatCurrency(value as number)}
+                <YAxis
+                  stroke="var(--text-muted)" 
+                  tickFormatter={(value) => `${(value / 1000000).toFixed(0)}M`}
+                  tickCount={isMobile ? 4 : 6}
+                  tick={{ fontSize: 11, fontFamily: 'DM Mono' }}
                 />
-                <Bar dataKey="income" name="Pemasukan" fill="var(--color-chart-1)" radius={[8, 8, 0, 0]}>
-                  {!isMobile && (
-                    <LabelList dataKey="income" position="top" formatter={(value: number) => formatCurrency(value)} />
-                  )}
-                </Bar>
-                <Bar dataKey="expense" name="Pengeluaran" fill="var(--color-chart-3)" radius={[8, 8, 0, 0]}>
-                  {!isMobile && (
-                    <LabelList dataKey="expense" position="top" formatter={(value: number) => formatCurrency(value)} />
-                  )}
-                </Bar>
-              </BarChart>
+                <Tooltip content={<ChartTooltip />} />
+                <Legend iconType="circle" />
+                <Area
+                  type="monotone"
+                  dataKey="income"
+                  name="Pemasukan"
+                  stroke="#00D4AA"
+                  fill="url(#incomeFill)"
+                  strokeWidth={2.5}
+                  isAnimationActive
+                  animationDuration={900}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="expense"
+                  name="Pengeluaran"
+                  stroke="#FF5C7C"
+                  fill="url(#expenseFill)"
+                  strokeWidth={2.5}
+                  isAnimationActive
+                  animationDuration={900}
+                />
+              </AreaChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* Pie Chart */}
-        <Card className="border shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-xl">Komposisi Pengeluaran</CardTitle>
-            <CardDescription className="text-xs">Breakdown per kategori</CardDescription>
-          </CardHeader>
-          <CardContent>
+        <div className="kasflow-composition-chart glass-card rounded-[14px]">
+          <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-white/10">
+            <h2 className="text-sm font-semibold text-primary mb-1">Komposisi Pengeluaran</h2>
+            <p className="text-xs text-secondary">Breakdown per kategori</p>
+          </div>
+          <div className="p-4 sm:p-6">
             {expenseByCategory.length > 0 ? (
               <>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={expenseByCategory}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={2}
-                    // ensure very small categories get a visible arc
-                    minAngle={5}
-                    // add a white stroke so adjacent thin slices are separated visually
-                    stroke="#ffffff"
-                    strokeWidth={1}
-                    dataKey="value"
-                  >
-                    {expenseByCategory.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={expenseSliceColors[index]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "rgba(255,255,255,0.08)",
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      borderRadius: "8px",
-                      color: "var(--color-foreground)",
-                    }}
-                    itemStyle={{ color: "var(--color-foreground)" }}
-                    formatter={(value) => formatCurrency(value as number)}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-              {/* Legend for small slices: shows color swatch, name and formatted value */}
-              <div className="mt-4 flex flex-wrap gap-3">
-                {expenseByCategory.map((entry, idx) => (
-                  <div key={entry.name} className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span
-                      className="w-4 h-4 rounded-full"
-                      style={{ backgroundColor: expenseSliceColors[idx], boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.04)' }}
-                    />
-                    <span className="font-medium text-foreground">{entry.name}</span>
-                    <span className="ml-2 text-xs text-muted-foreground">{formatCurrency(entry.value)}</span>
-                  </div>
-                ))}
-              </div>
-              </>
-            ) : (
-              <div className="flex h-[300px] items-center justify-center text-muted-foreground text-sm">
-                Belum ada data pengeluaran
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Recent Transactions */}
-      <Card className="border shadow-sm">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-primary" />
-            <div>
-              <CardTitle className="text-xl">Transaksi Terbaru</CardTitle>
-              <CardDescription>
-                {transactions.length > 5 ? "5 transaksi terakhir" : `${transactions.length} transaksi`}
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {transactions.length > 0 ? (
-            <div className="space-y-1">
-              {transactions.slice(0, 5).map((transaction) => (
-                <div
-                  key={transaction.id}
-                  className="flex items-center justify-between p-4 rounded-lg hover:bg-muted/50 transition-colors duration-200"
-                >
-                  <div className="flex-1">
-                    <p className="font-semibold text-foreground text-sm md:text-base">{transaction.description}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {transaction.category} • {transaction.accountName} • {transaction.date}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p
-                      className={`font-bold text-sm md:text-base ${
-                        transaction.type === "income" ? "text-emerald-600" : "text-rose-600"
-                      }`}
-                    >
-                      {transaction.type === "income" ? "+ " : "- "} {formatCurrency(transaction.amount)}
-                    </p>
+                <div className="relative h-[200px] sm:h-[240px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={expenseByCategory}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={isMobile ? 42 : 50}
+                        outerRadius={isMobile ? 74 : 85}
+                        paddingAngle={2}
+                        minAngle={5}
+                        dataKey="value"
+                        onMouseEnter={(_, idx) => setActivePieIndex(idx)}
+                        onMouseLeave={() => setActivePieIndex(null)}
+                      >
+                        {expenseByCategory.map((_entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={expenseSliceColors[index]}
+                            stroke={activePieIndex === index ? "#ffffff" : "transparent"}
+                            strokeWidth={activePieIndex === index ? 1.2 : 0}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<ChartTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex items-center justify-center text-center pointer-events-none px-6">
+                    <div>
+                    <p className="text-xs text-muted">Total</p>
+                    <p className="text-sm font-semibold text-primary">{formatCurrency(totalExpenseForPie)}</p>
+                    {activePieIndex !== null ? (
+                      <p className="text-[11px] text-secondary mt-1">
+                        {expenseByCategory[activePieIndex]?.name}: {((expenseByCategory[activePieIndex]?.value ?? 0) / Math.max(1, totalExpenseForPie) * 100).toFixed(1)}%
+                      </p>
+                    ) : null}
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
+                <div className="kasflow-donut-legend mt-3 grid grid-cols-1 sm:grid-cols-1 gap-2">
+                  {expenseByCategory.map((entry, idx) => (
+                    <div key={`legend-${entry.name}`} className="flex items-center gap-2 text-xs text-secondary rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-2">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: expenseSliceColors[idx] }} />
+                      <span className="truncate flex-1">{entry.name}</span>
+                      <span>{((entry.value / Math.max(1, totalExpenseForPie)) * 100).toFixed(1)}%</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="flex h-[240px] items-center justify-center text-muted">
+                Belum ada data
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {accountBalances.length > 0 && (
+        <section className="space-y-4">
+          <h2 className="text-sm font-semibold text-primary">Akun-akun Anda</h2>
+          <div className="kasflow-account-grid grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            {accountBalances.map((account) => (
+              <div
+                key={account.id}
+                className="kasflow-account-card group glass-card rounded-[14px] p-4 sm:p-5 border-l-4 transition-all hover:-translate-y-1"
+                style={{ borderLeftColor: getAccountAccent(account.type) }}
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <p className="text-sm font-semibold text-primary">{account.name}</p>
+                    <p className="text-xs text-secondary mt-1">{account.institution || account.type}</p>
+                    <div className="kasflow-mobile-account-balance mt-2 hidden items-center justify-between gap-3">
+                      <span className="text-xs text-muted">Saldo</span>
+                      <span className={`text-sm font-semibold ${account.balance >= 0 ? "text-green" : "text-red"}`}>
+                        {formatCurrency(account.balance)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center text-accent">
+                    {getAccountIcon(account.type)}
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted">Pemasukan</span>
+                    <span className="text-sm font-semibold text-green">{formatCurrency(account.totalIncome)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted">Pengeluaran</span>
+                    <span className="text-sm font-semibold text-red">{formatCurrency(account.totalExpense)}</span>
+                  </div>
+                  <div className="kasflow-account-balance-row border-t border-border pt-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-primary">Saldo</span>
+                      <span className={`text-lg font-semibold ${account.balance >= 0 ? "text-green" : "text-red"}`}>
+                        {formatCurrency(account.balance)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => goToTransactionsForAccount(String(account.id))}
+                  className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#4D9FFF]/35 bg-[#4D9FFF]/10 px-3 py-1 text-[11px] text-[#87BCFF] opacity-100 sm:opacity-0 sm:translate-y-2 sm:group-hover:opacity-100 sm:group-hover:translate-y-0"
+                >
+                  Lihat Transaksi <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <div className="glass-card rounded-[14px]">
+        <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-white/10">
+          <h2 className="text-sm font-semibold text-primary mb-1">Transaksi Terbaru</h2>
+          <p className="text-xs text-secondary">
+            {transactions.length > 10 ? "10 transaksi terakhir" : `${transactions.length} transaksi`}
+          </p>
+        </div>
+        <div className="divide-y divide-white/5">
+          {transactions.length > 0 ? (
+            transactions.slice(0, 10).map((transaction, index) => (
+              <div
+                key={transaction.id}
+                className={`px-4 sm:px-6 py-4 transition-colors duration-200 flex items-center justify-between border-l-2 animate-slide-in ${
+                  index % 2 === 0 ? "bg-white/[0.01]" : "bg-transparent"
+                } hover:bg-white/[0.04]`}
+                style={{
+                  borderLeftColor: getCategoryColor(transaction.category, transaction.type),
+                  animationDelay: `${index * 45}ms`,
+                }}
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-primary truncate">{transaction.description}</p>
+                  <p className="text-xs text-secondary mt-1">
+                    {transaction.category} • {transaction.accountName} • {transaction.date}
+                  </p>
+                </div>
+                <div className="ml-4 text-right">
+                  <p
+                    className={`text-sm font-semibold ${
+                      transaction.type === "income" ? "text-green" : "text-red"
+                    }`}
+                  >
+                    {transaction.type === "income" ? "+ " : "- "} {formatCurrency(transaction.amount)}
+                  </p>
+                </div>
+              </div>
+            ))
           ) : (
-            <div className="flex h-24 items-center justify-center text-muted-foreground">Belum ada transaksi</div>
+            <div className="px-6 py-12 flex items-center justify-center text-muted">
+              Belum ada transaksi
+            </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+
+      <Button className="sm:hidden fixed bottom-5 right-4 z-30 rounded-full h-12 w-12 p-0 bg-gradient-to-r from-[#00D4AA] to-[#4D9FFF] text-[#061220] shadow-[0_0_20px_rgba(0,212,170,0.45)] hover:scale-[1.02]">
+        <Plus className="h-5 w-5" />
+        <span className="sr-only">Tambah Transaksi</span>
+      </Button>
     </div>
   )
 }

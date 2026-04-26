@@ -2,12 +2,13 @@
 
 import { useFinance } from "@/context/finance-context"
 import { useMemo, useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
 import { getCategoryColor } from "@/lib/utils"
+import MonthlySummaryCard from "@/components/MonthlySummaryCard"
 
 export default function Reports() {
   const { transactions, getTotalIncome, getTotalExpense, getBalance, accounts } = useFinance()
+  const [userId, setUserId] = useState("")
 
   const income = getTotalIncome()
   const expense = getTotalExpense()
@@ -85,6 +86,27 @@ export default function Reports() {
   const [chartHeight, setChartHeight] = useState<number>(300)
 
   useEffect(() => {
+    let mounted = true
+
+    const run = async () => {
+      try {
+        const res = await fetch("/api/me", { cache: "no-store" })
+        const json = (await res.json()) as { user?: { id?: string } }
+        if (mounted) {
+          setUserId(String(json.user?.id ?? ""))
+        }
+      } catch (error) {
+        console.error("Load profile for monthly summary failed", error)
+      }
+    }
+
+    void run()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  useEffect(() => {
     function update() {
       const w = typeof window !== "undefined" ? window.innerWidth : 1024
       // if width < 640 (sm) use smaller chart height
@@ -124,41 +146,39 @@ export default function Reports() {
   }
 
   return (
-    <div className="space-y-6 px-4 sm:px-0">
+    <div className="kasflow-reports space-y-6 sm:space-y-7 pb-8">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Laporan Analisis</h1>
-        <p className="text-muted-foreground mt-1">Analisis detail keuangan Anda</p>
+        <h1 className="kasflow-page-title text-2xl md:text-[28px] font-semibold text-primary mb-1">Laporan Analisis</h1>
+        <p className="text-xs uppercase tracking-[0.2em] text-muted">Analisis detail keuangan Anda</p>
       </div>
+
+      {userId ? <MonthlySummaryCard userId={userId} /> : null}
 
       {/* Summary Per Sumber (akun) */}
       {sourceSummaries.length > 0 && (
         <section>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="kasflow-reports-summary-grid grid grid-cols-1 sm:grid-cols-2 gap-5">
             {sourceSummaries.map((s) => (
-              <Card key={s.id} className="border shadow-sm p-4 sm:p-6">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg font-semibold">{s.name}</CardTitle>
-                  <CardDescription className="text-sm">{s.count} transaksi</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-                    <div className="space-y-1">
-                      <div className="text-sm text-muted-foreground truncate">Pemasukan</div>
-                      <div className="text-xl sm:text-2xl font-bold text-emerald-500 break-words">{formatCurrency(s.income)}</div>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="text-sm text-muted-foreground truncate">Pengeluaran</div>
-                      <div className="text-xl sm:text-2xl font-bold text-rose-500 break-words">{formatCurrency(s.expense)}</div>
-                    </div>
-                    <div className="space-y-1 md:text-right text-left">
-                      <div className="text-sm text-muted-foreground">Rasio Saving</div>
-                      <div className="text-lg sm:text-xl font-bold text-primary">
-                        {s.income === 0 ? '0%' : `${calculatePercentage(s.income - s.expense, s.income)}%`}
-                      </div>
-                    </div>
+              <div key={s.id} className="glass-card rounded-[14px] p-4 sm:p-5">
+                <h3 className="text-sm font-semibold text-primary mb-1">{s.name}</h3>
+                <p className="text-xs text-secondary mb-4">{s.count} transaksi</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <span className="text-xs text-muted">Pemasukan</span>
+                    <p className="text-sm font-semibold text-green">{formatCurrency(s.income)}</p>
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="space-y-1">
+                    <span className="text-xs text-muted">Pengeluaran</span>
+                    <p className="text-sm font-semibold text-red">{formatCurrency(s.expense)}</p>
+                  </div>
+                  <div className="space-y-1 sm:text-right">
+                    <span className="text-xs text-muted">Rasio</span>
+                    <p className="text-sm font-semibold text-[#4D9FFF]">
+                      {s.income === 0 ? '0%' : `${calculatePercentage(s.income - s.expense, s.income)}%`}
+                    </p>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         </section>
@@ -167,12 +187,12 @@ export default function Reports() {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {incomeByCategory.length > 0 && (
-          <Card className="border shadow-sm">
-            <CardHeader>
-              <CardTitle>Pemasukan per Kategori</CardTitle>
-              <CardDescription>Komposisi sumber pemasukan</CardDescription>
-            </CardHeader>
-            <CardContent>
+          <div className="glass-card rounded-[14px]">
+            <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-white/10">
+              <h2 className="text-sm font-semibold text-primary mb-1">Pemasukan per Kategori</h2>
+              <p className="text-xs text-secondary">Komposisi sumber pemasukan</p>
+            </div>
+            <div className="p-4 sm:p-6">
               <ResponsiveContainer width="100%" height={chartHeight}>
                 <PieChart>
                   <Pie
@@ -183,7 +203,7 @@ export default function Reports() {
                     outerRadius={100}
                     paddingAngle={2}
                     minAngle={5}
-                    stroke="var(--color-card)"
+                    stroke="var(--bg-surface)"
                     strokeWidth={1}
                     dataKey="value"
                   >
@@ -193,12 +213,12 @@ export default function Reports() {
                   </Pie>
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "var(--color-card)",
-                      border: "1px solid var(--color-border)",
-                      borderRadius: "8px",
-                      color: "var(--color-foreground)",
+                      backgroundColor: "rgba(12,18,30,0.75)",
+                      border: "1px solid rgba(255,255,255,0.15)",
+                      borderRadius: "12px",
+                      color: "var(--text-primary)",
+                      backdropFilter: "blur(10px)",
                     }}
-                    itemStyle={{ color: "var(--color-foreground)" }}
                     formatter={(value) => formatCurrency(value as number)}
                   />
                 </PieChart>
@@ -207,29 +227,28 @@ export default function Reports() {
                 {incomeByCategory.map((entry, idx) => (
                   <div
                     key={`income-legend-${entry.name}`}
-                    className="w-full flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm text-foreground bg-background"
+                    className="flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-sm text-secondary hover:text-primary hover:border-[#4D9FFF]/45 bg-white/5"
                   >
                     <span
-                      className="w-4 h-4 rounded-full"
-                      style={{ backgroundColor: incomeCategoryColors[idx], boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.05)" }}
+                      className="w-3 h-3 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: incomeCategoryColors[idx] }}
                     />
-                    <span className="font-medium">{entry.name}</span>
-                    <span className="text-xs opacity-80">{formatCurrency(entry.value)}</span>
-                    <span className="text-xs opacity-80">({calculatePercentage(entry.value, income)}%)</span>
+                    <span className="font-medium flex-1 truncate">{entry.name}</span>
+                    <span className="text-xs text-muted whitespace-nowrap">{calculatePercentage(entry.value, income)}%</span>
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
 
         {expenseByCategory.length > 0 && (
-          <Card className="border shadow-sm">
-            <CardHeader>
-              <CardTitle>Pengeluaran per Kategori</CardTitle>
-              <CardDescription>Komposisi pengeluaran Anda</CardDescription>
-            </CardHeader>
-            <CardContent>
+          <div className="glass-card rounded-[14px]">
+            <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-white/10">
+              <h2 className="text-sm font-semibold text-primary mb-1">Pengeluaran per Kategori</h2>
+              <p className="text-xs text-secondary">Komposisi pengeluaran Anda</p>
+            </div>
+            <div className="p-4 sm:p-6">
               <ResponsiveContainer width="100%" height={chartHeight}>
                 <PieChart>
                   <Pie
@@ -240,7 +259,7 @@ export default function Reports() {
                     outerRadius={100}
                     paddingAngle={2}
                     minAngle={5}
-                    stroke="var(--color-card)"
+                    stroke="var(--bg-surface)"
                     strokeWidth={1}
                     dataKey="value"
                   >
@@ -250,12 +269,12 @@ export default function Reports() {
                   </Pie>
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "var(--color-card)",
-                      border: "1px solid var(--color-border)",
-                      borderRadius: "8px",
-                      color: "var(--color-foreground)",
+                      backgroundColor: "rgba(12,18,30,0.75)",
+                      border: "1px solid rgba(255,255,255,0.15)",
+                      borderRadius: "12px",
+                      color: "var(--text-primary)",
+                      backdropFilter: "blur(10px)",
                     }}
-                    itemStyle={{ color: "var(--color-foreground)" }}
                     formatter={(value) => formatCurrency(value as number)}
                   />
                 </PieChart>
@@ -264,71 +283,68 @@ export default function Reports() {
                 {expenseByCategory.map((entry, idx) => (
                   <div
                     key={`expense-legend-${entry.name}`}
-                    className="w-full flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm text-foreground bg-background"
+                    className="flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-sm text-secondary hover:text-primary hover:border-[#FF5C7C]/45 bg-white/5"
                   >
                     <span
-                      className="w-4 h-4 rounded-full"
-                      style={{ backgroundColor: expenseCategoryColors[idx], boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.05)" }}
+                      className="w-3 h-3 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: expenseCategoryColors[idx] }}
                     />
-                    <span className="font-medium">{entry.name}</span>
-                    <span className="text-xs opacity-80">{formatCurrency(entry.value)}</span>
-                    <span className="text-xs opacity-80">({calculatePercentage(entry.value, expense)}%)</span>
+                    <span className="font-medium flex-1 truncate">{entry.name}</span>
+                    <span className="text-xs text-muted whitespace-nowrap">{calculatePercentage(entry.value, expense)}%</span>
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
       </div>
 
       {/* Detailed Table */}
-      <Card className="border shadow-sm">
-        <CardHeader>
-          <CardTitle>Ringkasan Kategori</CardTitle>
-          <CardDescription>Detil pengeluaran dan pemasukan per kategori</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-6">
-            {expenseByCategory.length > 0 && (
-              <div>
-                <h3 className="font-semibold text-foreground mb-3">Pengeluaran</h3>
-                <div className="space-y-2">
-                  {expenseByCategory.map((item) => (
-                    <div key={item.name} className="flex items-center justify-between p-3 bg-muted/60 rounded-md border">
-                      <span className="text-foreground font-medium">{item.name}</span>
-                      <div className="text-right">
-                        <p className="font-semibold text-red-500">{formatCurrency(item.value)}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {calculatePercentage(item.value, expense)}% dari total
-                        </p>
-                      </div>
+      <div className="glass-card rounded-[14px]">
+        <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-white/10">
+          <h2 className="text-sm font-semibold text-primary mb-1">Ringkasan Kategori</h2>
+          <p className="text-xs text-secondary">Detil pengeluaran dan pemasukan per kategori</p>
+        </div>
+        <div className="p-4 sm:p-6 space-y-6">
+          {expenseByCategory.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-primary mb-4">Pengeluaran</h3>
+              <div className="space-y-2 divide-y divide-border">
+                {expenseByCategory.map((item) => (
+                  <div key={item.name} className="kasflow-breakdown-row flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 py-3 first:pt-0 last:pb-0 hover:bg-elevated px-2 rounded-lg transition-colors">
+                    <span className="text-sm text-secondary font-medium">{item.name}</span>
+                    <div className="sm:text-right">
+                      <p className="text-sm font-semibold text-red">{formatCurrency(item.value)}</p>
+                      <p className="text-xs text-muted">
+                        {calculatePercentage(item.value, expense)}% dari total
+                      </p>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
-            )}
+            </div>
+          )}
 
-            {incomeByCategory.length > 0 && (
-              <div>
-                <h3 className="font-semibold text-foreground mb-3">Pemasukan</h3>
-                <div className="space-y-2">
-                  {incomeByCategory.map((item) => (
-                    <div key={item.name} className="flex items-center justify-between p-3 bg-muted/60 rounded-md border">
-                      <span className="text-foreground font-medium">{item.name}</span>
-                      <div className="text-right">
-                        <p className="font-semibold text-green-500">{formatCurrency(item.value)}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {calculatePercentage(item.value, income)}% dari total
-                        </p>
-                      </div>
+          {incomeByCategory.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-primary mb-4">Pemasukan</h3>
+              <div className="space-y-2 divide-y divide-border">
+                {incomeByCategory.map((item) => (
+                  <div key={item.name} className="kasflow-breakdown-row flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 py-3 first:pt-0 last:pb-0 hover:bg-elevated px-2 rounded-lg transition-colors">
+                    <span className="text-sm text-secondary font-medium">{item.name}</span>
+                    <div className="sm:text-right">
+                      <p className="text-sm font-semibold text-green">{formatCurrency(item.value)}</p>
+                      <p className="text-xs text-muted">
+                        {calculatePercentage(item.value, income)}% dari total
+                      </p>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

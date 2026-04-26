@@ -105,6 +105,50 @@ CREATE TABLE IF NOT EXISTS `whatsapp_poll_state` (
   PRIMARY KEY (`chat_jid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `ai_budget_analysis` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id` VARCHAR(255) NOT NULL,
+  `month` VARCHAR(7) NOT NULL,
+  `monthly_income` BIGINT NOT NULL,
+  `status_keuangan` ENUM('sehat', 'perhatian', 'kritis') NOT NULL,
+  `persentase_pengeluaran` DECIMAL(5,2) NULL,
+  `pesan_utama` TEXT NULL,
+  `analysis_json` LONGTEXT NOT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_user_month` (`user_id`, `month`),
+  KEY `idx_ai_budget_user_month` (`user_id`, `month`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `ai_alerts` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id` VARCHAR(255) NOT NULL,
+  `tipe` VARCHAR(50) NOT NULL,
+  `level` ENUM('warning', 'danger') NOT NULL,
+  `judul` VARCHAR(100) NOT NULL,
+  `pesan` TEXT NOT NULL,
+  `aksi` TEXT NULL,
+  `is_read` BOOLEAN NOT NULL DEFAULT FALSE,
+  `expired_at` TIMESTAMP NOT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_ai_alerts_user_status` (`user_id`, `is_read`, `expired_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `ai_monthly_summary` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id` VARCHAR(255) NOT NULL,
+  `month` VARCHAR(7) NOT NULL,
+  `skor_keuangan` INT NULL,
+  `grade` CHAR(1) NULL,
+  `summary_json` LONGTEXT NOT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_user_month_summary` (`user_id`, `month`),
+  KEY `idx_ai_monthly_summary_user_month` (`user_id`, `month`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Starter user (password: 123456, md5)
 INSERT INTO `users` (`id`, `email`, `name`, `password_hash`)
 VALUES (1, 'admin@catatan.local', 'Admin', 'e10adc3949ba59abbe56e057f20f883e')
@@ -140,4 +184,22 @@ INSERT INTO `categories` (`user_id`, `name`, `type`, `color`)
 SELECT 1, 'Gaji', 'income', '#16a34a'
 WHERE NOT EXISTS (
   SELECT 1 FROM `categories` WHERE `user_id` = 1 AND `name` = 'Gaji' AND `type` = 'income'
+);
+
+INSERT INTO `user_allocation_rules` (`user_id`, `name`, `percentage`, `description`, `sort_order`, `is_active`)
+SELECT 1, 'Kebutuhan Pokok', 50.00, 'Preferensi alokasi budget', 1, 1
+WHERE NOT EXISTS (
+  SELECT 1 FROM `user_allocation_rules` WHERE `user_id` = 1 AND LOWER(`name`) = 'kebutuhan pokok'
+);
+
+INSERT INTO `user_allocation_rules` (`user_id`, `name`, `percentage`, `description`, `sort_order`, `is_active`)
+SELECT 1, 'Keinginan', 30.00, 'Preferensi alokasi budget', 2, 1
+WHERE NOT EXISTS (
+  SELECT 1 FROM `user_allocation_rules` WHERE `user_id` = 1 AND LOWER(`name`) = 'keinginan'
+);
+
+INSERT INTO `user_allocation_rules` (`user_id`, `name`, `percentage`, `description`, `sort_order`, `is_active`)
+SELECT 1, 'Tabungan', 20.00, 'Preferensi alokasi budget', 3, 1
+WHERE NOT EXISTS (
+  SELECT 1 FROM `user_allocation_rules` WHERE `user_id` = 1 AND LOWER(`name`) = 'tabungan'
 );
